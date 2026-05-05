@@ -17,7 +17,10 @@
     "db:studio": "pnpm --filter @note/db studio",
     "db:generate": "pnpm --filter @note/db generate",
     "db:seed": "pnpm --filter @note/db seed",
-    "collect": "pnpm --filter @note/collector start"
+    "collect": "pnpm --filter @note/collector start",
+    "generate": "pnpm --filter @note/generator start",
+    "generate:batch": "pnpm --filter @note/generator start -- --batch 3",
+    "test": "pnpm -r --if-present test"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "esbuild", "prisma"]
