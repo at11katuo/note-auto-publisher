@@ -1,0 +1,23 @@
+{
+  "name": "@note/collector",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@note/db": "workspace:*",
+    "@note/logger": "workspace:*",
+    "@note/shared": "workspace:*",
+    "rss-parser": "^3.13.0",
+    "string-similarity": "^4.0.4"
+  },
+  "devDependencies": {
+    "@types/string-similarity": "^4.0.2",
+    "tsx": "^4.19.1",
+    "typescript": "^5.7.2"
+  }
+}

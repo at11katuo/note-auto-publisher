@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Idea {
+  id          String    @id @default(cuid())
+  source      String    // "rss" | "x" | "manual"
+  sourceUrl   String?
+  title       String
+  summary     String    // 200字程度の要約
+  rawContent  String?   // 元記事の本文(あれば)
+  topics      String    // JSON配列の文字列 ["crypto", "nisa", ...]
+  status      String    @default("new") // "new" | "used" | "skipped"
+  collectedAt DateTime  @default(now())
+  usedAt      DateTime?
+
+  drafts Draft[]
+
+  @@index([status, collectedAt])
+  @@index([source])
+}
+
+model Draft {
+  id            String    @id @default(cuid())
+  ideaId        String
+  idea          Idea      @relation(fields: [ideaId], references: [id])
+  title         String
+  body          String    // markdown
+  tags          String    // JSON配列
+  charCount     Int
+  status        String    @default("draft") // "draft" | "approved" | "published" | "rejected"
+  generatedAt   DateTime  @default(now())
+  publishedAt   DateTime?
+  noteUrl       String?
+  rejectReason  String?
+  llmModel      String    // "claude-sonnet-4-5" など
+  promptVersion String    // "v1.0" など、プロンプトのバージョン管理用
+
+  @@index([status, generatedAt])
+}
+
+model PublishLog {
+  id        String   @id @default(cuid())
+  draftId   String
+  action    String   // "submitted" | "succeeded" | "failed"
+  detail    String?  // エラーメッセージなど
+  createdAt DateTime @default(now())
+
+  @@index([draftId])
+}

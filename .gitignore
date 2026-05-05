@@ -141,3 +141,19 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# note-auto-publisher specific
+# Playwright auth sessions (セキュリティ: 絶対にコミットしない)
+apps/publisher/.auth/
+
+# SQLite database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# PM2
+.pm2/
+
+# TypeScript build cache
+*.tsbuildinfo
