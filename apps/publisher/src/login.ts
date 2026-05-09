@@ -1,0 +1,105 @@
+import { ResultAsync } from 'neverthrow'
+import type { Page } from 'playwright'
+import { createLogger } from '@note/logger'
+import { parseEnv } from '@note/shared'
+import { saveStorageState } from './browser.js'
+
+const log = createLogger('publisher:login')
+
+const NOTE_ORIGIN = 'https://note.com'
+const LOGIN_URL = `${NOTE_ORIGIN}/login`
+const HOME_URL = `${NOTE_ORIGIN}/`
+
+const SELECTOR_EMAIL =
+  'input[type="email"], input[name="login"], input[id="email"]'
+const SELECTOR_PASSWORD = 'input[type="password"]'
+const SELECTOR_SUBMIT = 'button:has-text("ログイン"), button[type="submit"]'
+
+const SELECTOR_LOGGED_IN_MARKER =
+  '[data-testid="header-account-menu"], a[href*="/notes/new"], button[aria-label*="アカウント"], img[alt*="プロフィール"]'
+
+const TIMEOUT_NAVIGATION = 30_000
+const TIMEOUT_LOGIN_CHECK = 7_000
+const TIMEOUT_2FA_WAIT = 120_000
+
+export class LoginError extends Error {
+  override readonly name = 'LoginError'
+  constructor(
+    message: string,
+    readonly cause?: unknown,
+  ) {
+    super(message)
+  }
+}
+
+async function isLoggedIn(page: Page): Promise<boolean> {
+  try {
+    await page.goto(HOME_URL, {
+      waitUntil: 'domcontentloaded',
+      timeout: TIMEOUT_NAVIGATION,
+    })
+    await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {
+      timeout: TIMEOUT_LOGIN_CHECK,
+      state: 'attached',
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function performLogin(page: Page): Promise<void> {
+  const env = parseEnv()
+
+  log.info('navigating to login page')
+  await page.goto(LOGIN_URL, {
+    waitUntil: 'domcontentloaded',
+    timeout: TIMEOUT_NAVIGATION,
+  })
+
+  await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
+  await page.fill(SELECTOR_EMAIL, env.NOTE_EMAIL)
+  await page.fill(SELECTOR_PASSWORD, env.NOTE_PASSWORD)
+
+  log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
+  await Promise.all([
+    page.waitForLoadState('networkidle', { timeout: TIMEOUT_NAVIGATION }),
+    page.click(SELECTOR_SUBMIT),
+  ])
+
+  log.info(
+    { timeoutMs: TIMEOUT_2FA_WAIT },
+    'waiting for post-login state (manual 2FA accepted)',
+  )
+  await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {
+    timeout: TIMEOUT_2FA_WAIT,
+    state: 'attached',
+  })
+
+  log.info('login confirmed')
+}
+
+export function ensureLoggedIn(
+  page: Page,
+): ResultAsync<{ reused: boolean }, LoginError> {
+  return ResultAsync.fromPromise(
+    (async () => {
+      if (await isLoggedIn(page)) {
+        log.info('reused stored session')
+        return { reused: true }
+      }
+
+      log.warn('stored session invalid or missing — performing fresh login')
+      await performLogin(page)
+
+      const ctx = page.context()
+      const saved = await saveStorageState(ctx)
+      if (saved.isErr()) {
+        throw saved.error
+      }
+
+      return { reused: false }
+    })(),
+    (e) => new LoginError('ensureLoggedIn failed', e),
+  )
+}
