@@ -1,12 +1,21 @@
 'use server';
 
+import { spawn } from 'node:child_process';
+import path from 'node:path';
 import { prisma } from '@note/db';
 import { revalidatePath } from 'next/cache';
 
 // フォーム経由で呼ぶため第2引数は FormData。id は .bind(null, id) で注入する。
+const VALID_STATUSES = ['draft', 'approved', 'rejected', 'published'] as const;
+type DraftStatus = (typeof VALID_STATUSES)[number];
+
 export async function updateDraft(id: string, formData: FormData): Promise<void> {
   const title = (formData.get('title') as string | null)?.trim() ?? '';
   const body = (formData.get('body') as string | null) ?? '';
+  const rawStatus = (formData.get('status') as string | null) ?? '';
+  const status = (VALID_STATUSES as readonly string[]).includes(rawStatus)
+    ? (rawStatus as DraftStatus)
+    : undefined;
 
   await prisma.draft.update({
     where: { id },
@@ -14,6 +23,7 @@ export async function updateDraft(id: string, formData: FormData): Promise<void>
       title,
       body,
       charCount: body.length,
+      ...(status !== undefined ? { status } : {}),
     },
   });
 
@@ -25,6 +35,39 @@ export async function approveDraft(id: string, _formData: FormData): Promise<voi
   await prisma.draft.update({
     where: { id },
     data: { status: 'approved' },
+  });
+
+  revalidatePath(`/drafts/${id}`);
+  revalidatePath('/drafts');
+  revalidatePath('/');
+}
+
+export async function triggerPublish(id: string, _formData?: FormData): Promise<void> {
+  const draft = await prisma.draft.findUnique({ where: { id } });
+  if (!draft) {
+    throw new Error(`Draft not found: ${id}`);
+  }
+  if (draft.status !== 'approved') {
+    throw new Error(
+      `Draft must be approved before publishing (current status: ${draft.status})`,
+    );
+  }
+
+  const monorepoRoot = path.resolve(process.cwd(), '..', '..');
+  const child = spawn('pnpm', ['publish:run', '--draft-id', id], {
+    cwd: monorepoRoot,
+    detached: true,
+    stdio: 'ignore',
+    shell: true,
+  });
+  child.on('error', (err) => {
+    console.error(`[triggerPublish] failed to spawn publisher for ${id}:`, err);
+  });
+  child.unref();
+
+  await prisma.draft.update({
+    where: { id },
+    data: { status: 'publishing' },
   });
 
   revalidatePath(`/drafts/${id}`);

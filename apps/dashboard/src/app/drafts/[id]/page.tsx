@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@note/db';
-import { approveDraft, rejectDraft, updateDraft } from '@/server/actions/draft';
+import { approveDraft, rejectDraft, triggerPublish, updateDraft } from '@/server/actions/draft';
 
 export const revalidate = 0;
 
@@ -32,9 +32,11 @@ export default async function DraftDetailPage({ params }: Props) {
   const saveAction = updateDraft.bind(null, draft.id);
   const approveAction = approveDraft.bind(null, draft.id);
   const rejectAction = rejectDraft.bind(null, draft.id);
+  const publishAction = triggerPublish.bind(null, draft.id);
 
   const statusColor = STATUS_COLOR[draft.status] ?? 'bg-gray-800 text-gray-400';
   const isDraft = draft.status === 'draft';
+  const isApproved = draft.status === 'approved';
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-8 space-y-6">
@@ -100,12 +102,37 @@ export default async function DraftDetailPage({ params }: Props) {
           />
         </div>
 
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-gray-700 py-3 text-sm font-semibold text-white hover:bg-gray-600 active:scale-95 transition-transform"
-        >
-          保存
-        </button>
+        <div>
+          <label className="block mb-1 text-sm font-medium text-gray-300">ステータス</label>
+          <select
+            name="status"
+            defaultValue={draft.status}
+            className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white focus:border-blue-500 focus:outline-none"
+          >
+            <option value="draft">下書き</option>
+            <option value="approved">承認済み</option>
+            <option value="rejected">却下</option>
+            <option value="published">投稿済み</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            type="submit"
+            className="flex-1 rounded-lg bg-gray-700 py-3 text-sm font-semibold text-white hover:bg-gray-600 active:scale-95 transition-transform"
+          >
+            保存
+          </button>
+          {isApproved && (
+            <button
+              type="submit"
+              formAction={publishAction}
+              className="flex-1 rounded-lg bg-green-700 py-3 text-sm font-semibold text-white hover:bg-green-600 active:scale-95 transition-transform"
+            >
+              noteへ投稿（Publish）
+            </button>
+          )}
+        </div>
       </form>
 
       {/* 承認・却下（下書きのみ表示） */}

@@ -20,6 +20,8 @@
     "collect": "pnpm --filter @note/collector start",
     "generate": "pnpm --filter @note/generator start",
     "generate:batch": "pnpm --filter @note/generator start -- --batch 3",
+    "publish:run": "pnpm --filter @note/publisher start",
+    "publish:login": "pnpm --filter @note/publisher start -- --login-only",
     "test": "pnpm -r --if-present test"
   },
   "pnpm": {
