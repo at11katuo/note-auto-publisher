@@ -1,0 +1,41 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            echo "==> git pull"
+            git pull origin main
+
+            echo "==> docker compose build & restart"
+            # migrate サービスが先に完了し、その後 DB マイグレーションが実行される
+            docker compose up -d --build --remove-orphans
+
+            echo "==> waiting for migrate service to complete"
+            docker compose wait migrate
+
+            echo "==> health check"
+            docker compose ps
+
+            echo "==> deploy complete"

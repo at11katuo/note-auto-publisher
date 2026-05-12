@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────
+# note-auto-publisher Caddyfile
+#
+# 【現在】IPアドレス直接アクセス (HTTP のみ)
+# 【将来】ドメイン取得後は下記 "ドメイン設定例" に差し替えると
+#         Let's Encrypt TLS が自動で有効になる
+# ─────────────────────────────────────────────────────────────
+
+http://210.131.223.49 {
+    # アクセスログ
+    log {
+        output stderr
+        format console
+    }
+
+    # gzip 圧縮
+    encode gzip
+
+    # セキュリティヘッダー
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # Next.js へリバースプロキシ
+    reverse_proxy dashboard:3000 {
+        # ヘルスチェック
+        health_uri     /api/health
+        health_interval 30s
+        # タイムアウト（記事生成 API が長い場合に備えて）
+        transport http {
+            response_header_timeout 120s
+        }
+    }
+}
+
+# ─────────────────────────────────────────────────────────────
+# ドメイン取得後の設定例（IPアドレス行と差し替える）
+# ─────────────────────────────────────────────────────────────
+# your-domain.com {
+#     encode gzip
+#
+#     header {
+#         X-Content-Type-Options nosniff
+#         X-Frame-Options DENY
+#         Referrer-Policy strict-origin-when-cross-origin
+#         Strict-Transport-Security "max-age=31536000; includeSubDomains"
+#         -Server
+#     }
+#
+#     reverse_proxy dashboard:3000 {
+#         health_uri     /api/health
+#         health_interval 30s
+#         transport http {
+#             response_header_timeout 120s
+#         }
+#     }
+# }

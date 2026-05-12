@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# 開発用ファイル
+.env
+.env.local
+node_modules
+**/node_modules
+
+# Next.js ビルド成果物（Docker ビルド内で生成）
+apps/dashboard/.next
+apps/dashboard/out
+
+# Playwright セッション（ボリュームで管理）
+apps/publisher/.auth
+
+# ログ・一時ファイル
+*.log
+logs/
+tmp/
+.tmp/
+
+# テスト
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+coverage/
+
+# エディタ・OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github
+
+# Docker 自身
+docker-compose.override.yml
+Dockerfile*
+
+# ドキュメント
+docs/
+*.md
+!packages/db/prisma
