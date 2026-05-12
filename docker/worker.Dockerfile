@@ -37,6 +37,7 @@ COPY apps/generator/ apps/generator/
 COPY apps/publisher/ apps/publisher/
 
 # Prisma クライアント生成
+RUN pnpm install prisma
 RUN pnpm --filter @note/db generate
 
 # デフォルトは collector（docker-compose で上書き可）
