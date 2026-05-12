@@ -25,7 +25,7 @@ COPY packages/ packages/
 COPY apps/dashboard/ apps/dashboard/
 
 # Prisma クライアント生成 → Next.js ビルド
-RUN pnpm install prisma -w
+RUN pnpm install prisma @prisma/client -w
 RUN pnpm --filter @note/db generate
 RUN pnpm --filter @note/dashboard build
 
