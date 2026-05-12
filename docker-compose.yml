@@ -1,0 +1,126 @@
+name: note-auto-publisher
+
+services:
+  # ─────────────────────────────────────────────────────────
+  # DB マイグレーション（起動時に1回だけ実行して終了）
+  # ─────────────────────────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    command: sh -c "pnpm --filter @note/db migrate:deploy"
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/app/data/prod.db
+    volumes:
+      - db_data:/app/data
+    restart: "no"
+    networks: [internal]
+
+  # ─────────────────────────────────────────────────────────
+  # Next.js 管理画面
+  # ─────────────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/app/data/prod.db
+    volumes:
+      - db_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [internal]
+
+  # ─────────────────────────────────────────────────────────
+  # ネタ収集ワーカー（常駐）
+  # ─────────────────────────────────────────────────────────
+  collector:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    command: ["pnpm", "--filter", "@note/collector", "start"]
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/app/data/prod.db
+    volumes:
+      - db_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [internal]
+
+  # ─────────────────────────────────────────────────────────
+  # 記事生成ワーカー（常駐＋スケジュール実行）
+  # ─────────────────────────────────────────────────────────
+  generator:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    command: ["pnpm", "--filter", "@note/generator", "start"]
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/app/data/prod.db
+    volumes:
+      - db_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [internal]
+
+  # ─────────────────────────────────────────────────────────
+  # note 投稿ワーカー（管理画面で承認後に手動トリガー）
+  # ─────────────────────────────────────────────────────────
+  publisher:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    command: ["pnpm", "--filter", "@note/publisher", "start"]
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/app/data/prod.db
+      PLAYWRIGHT_HEADLESS: "true"
+    volumes:
+      - db_data:/app/data
+      - auth_state:/app/apps/publisher/.auth
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [internal]
+
+  # ─────────────────────────────────────────────────────────
+  # リバースプロキシ (Caddy)
+  # ─────────────────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - dashboard
+    networks: [internal]
+
+# ─────────────────────────────────────────────────────────
+# ボリューム
+# ─────────────────────────────────────────────────────────
+volumes:
+  db_data:      # SQLite データベース (/app/data/prod.db)
+  auth_state:   # Playwright セッション (.auth/note.json)
+  caddy_data:   # TLS 証明書（ドメイン取得後に自動取得）
+  caddy_config: # Caddy 内部状態
+
+networks:
+  internal:
+    driver: bridge
