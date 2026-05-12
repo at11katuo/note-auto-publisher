@@ -24,9 +24,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY packages/ packages/
 COPY apps/dashboard/ apps/dashboard/
 
-# Prisma クライアント生成 → Next.js ビルド
+# Alpine Linuxに必要な部品を追加
+RUN apk add --no-cache libc6-compat openssl
+
+# Prisma ツールと部品をインストール
 RUN pnpm install prisma @prisma/client -w
-RUN pnpm --filter @note/db generate
+
+# 確実にデータベースの準備をしてから、Next.jsをビルドする
+RUN pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
 RUN pnpm --filter @note/dashboard build
 
 # ── Stage 3: runner ──────────────────────────────────────────
