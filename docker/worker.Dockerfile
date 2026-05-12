@@ -36,9 +36,14 @@ COPY apps/collector/ apps/collector/
 COPY apps/generator/ apps/generator/
 COPY apps/publisher/ apps/publisher/
 
-# Prisma クライアント生成
+# Prisma 実行に必要な部品（openssl）をOSにインストール
+RUN apt-get update -y && apt-get install -y openssl
+
+# Prisma ツールと部品をインストール
 RUN pnpm install prisma @prisma/client -w
-RUN pnpm --filter @note/db generate
+
+# 「場所」を直接指定して、確実にデータベースの準備をする
+RUN pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
 
 # デフォルトは collector（docker-compose で上書き可）
 CMD ["pnpm", "--filter", "@note/collector", "start"]
