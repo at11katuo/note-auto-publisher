@@ -39,14 +39,12 @@ COPY apps/publisher/ apps/publisher/
 # 1. OSの部品（openssl）をインストール
 RUN apt-get update -y && apt-get install -y openssl
 
-# 2. pnpmの制限を解除し、Prismaと部品を確実にインストール
-RUN pnpm config set ignore-workspace-root-check true && \
-    pnpm add -w prisma @prisma/client --save-prod
+# 2. Prismaと部品をインストール
+ RUN pnpm add -w prisma @prisma/client --save-prod
 
-# 3. ロックファイルの制約を一時的に外し、開発モードを装ってPrismaの準備を実行
-RUN pnpm config set frozen-lockfile false && \
-    NODE_ENV=development pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
-
+# 3. 自動インストールをスキップして、Prismaの準備を実行
+RUN PRISMA_GENERATE_SKIP_AUTOINSTALL=true \
+    pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
 # 4. 開発モードを装ってPrismaの準備を実行
 RUN NODE_ENV=development pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
 
