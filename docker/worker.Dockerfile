@@ -2,14 +2,15 @@
 # Playwright (Chromium) と tsx を含む
 #
 # 起動コマンドは docker-compose で上書きする:
-#   collector:  pnpm --filter @note/collector start
-#   generator:  pnpm --filter @note/generator  start
-#   publisher:  pnpm --filter @note/publisher  start
+#   collector: pnpm --filter @note/collector start
+#   generator: pnpm --filter @note/generator  start
+#   publisher: pnpm --filter @note/publisher  start
 
 FROM node:20-bookworm-slim
 WORKDIR /app
 
-ENV NODE_ENV=production
+# 【最重要】ビルド時は開発モードにして pnpm の制限を回避する
+ENV NODE_ENV=development
 ENV PLAYWRIGHT_HEADLESS=true
 ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 
@@ -25,6 +26,7 @@ COPY apps/collector/package.json    apps/collector/
 COPY apps/generator/package.json    apps/generator/
 COPY apps/publisher/package.json    apps/publisher/
 
+# NODE_ENV=development なので、devDependencies も含めてすべてインストールされる
 RUN pnpm install --frozen-lockfile
 
 # Chromium + OS 依存ライブラリを一括インストール
@@ -39,14 +41,11 @@ COPY apps/publisher/ apps/publisher/
 # 1. OSの部品（openssl）をインストール
 RUN apt-get update -y && apt-get install -y openssl
 
-# 2. 開発モードを強制してPrismaと部品をインストール
-RUN NODE_ENV=development pnpm install prisma @prisma/client -w
+# 2. Prismaツールと部品をインストール（-w でルートに配置）
+RUN pnpm install prisma @prisma/client -w
 
-# 3. データベースのフォルダに移動し、開発モードで準備を実行
-RUN cd packages/db && NODE_ENV=development pnpm exec prisma generate
-
-# 4. 開発モードを装ってPrismaの準備を実行
-RUN NODE_ENV=development pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
+# 3. データベースのフォルダに移動して、確実に準備を実行
+RUN cd packages/db && pnpm exec prisma generate
 
 # デフォルトは collector（docker-compose で上書き可）
 CMD ["pnpm", "--filter", "@note/collector", "start"]
