@@ -39,10 +39,10 @@ COPY apps/publisher/ apps/publisher/
 # 1. OSの部品（openssl）をインストール
 RUN apt-get update -y && apt-get install -y openssl
 
-# 2. Prismaと部品をインストール
+# 2. 開発モードを強制してPrismaと部品をインストール
 RUN NODE_ENV=development pnpm install prisma @prisma/client -w
 
-# 3. データベースのフォルダに移動して、直接準備を実行する
+# 3. データベースのフォルダに移動し、開発モードで準備を実行
 RUN cd packages/db && NODE_ENV=development pnpm exec prisma generate
 
 # 4. 開発モードを装ってPrismaの準備を実行
