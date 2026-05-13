@@ -28,11 +28,10 @@ COPY apps/dashboard/ apps/dashboard/
 RUN apk add --no-cache libc6-compat openssl
 
 # 2. Prismaと部品をインストール
-RUN pnpm add -w prisma @prisma/client --save-prod
+RUN pnpm install prisma @prisma/client -w
 
-# 3. 自動インストールをスキップして準備を行い、ビルドする
-RUN PRISMA_GENERATE_SKIP_AUTOINSTALL=true \
-    pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
+# 3. データベースのフォルダに移動して準備を行い、その後ビルドする
+RUN cd packages/db && pnpm exec prisma generate
 RUN pnpm --filter @note/dashboard build
 
 # ── Stage 3: runner ──────────────────────────────────────────
