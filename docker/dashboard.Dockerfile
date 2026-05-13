@@ -31,7 +31,7 @@ RUN apk add --no-cache libc6-compat openssl
 RUN pnpm install prisma @prisma/client -w
 
 # 確実にデータベースの準備をしてから、Next.jsをビルドする
-RUN pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
+RUN NODE_ENV=development pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
 RUN pnpm --filter @note/dashboard build
 
 # ── Stage 3: runner ──────────────────────────────────────────
