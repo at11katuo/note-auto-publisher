@@ -43,7 +43,7 @@ RUN apt-get update -y && apt-get install -y openssl
 RUN pnpm config set ignore-workspace-root-check true
 
 # 3. 開発モードでPrismaと部品をインストール
-RUN NODE_ENV=development pnpm install prisma @prisma/client
+RUN pnpm install prisma @prisma/client
 
 # 4. 開発モードでPrismaの準備を実行
 RUN NODE_ENV=development pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
