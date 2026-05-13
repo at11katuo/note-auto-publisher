@@ -36,13 +36,16 @@ COPY apps/collector/ apps/collector/
 COPY apps/generator/ apps/generator/
 COPY apps/publisher/ apps/publisher/
 
-# Prisma 実行に必要な部品（openssl）をOSにインストール
+# 1. OSの部品（openssl）をインストール
 RUN apt-get update -y && apt-get install -y openssl
 
-# Prisma ツールと部品をインストール
-RUN pnpm install prisma @prisma/client -w
+# 2. pnpmの「安全装置」を一時的にオフにする（これが重要！）
+RUN pnpm config set ignore-workspace-root-check true
 
-# 「場所」を直接指定して、確実にデータベースの準備をする
+# 3. 開発モードでPrismaと部品をインストール
+RUN NODE_ENV=development pnpm install prisma @prisma/client
+
+# 4. 開発モードでPrismaの準備を実行
 RUN NODE_ENV=development pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma
 
 # デフォルトは collector（docker-compose で上書き可）
