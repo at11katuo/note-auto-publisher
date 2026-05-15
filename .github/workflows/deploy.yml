@@ -34,20 +34,26 @@ jobs:
             echo "==> run database migration"
             docker compose up --exit-code-from migrate migrate
 
-            echo "==> fix database permissions"
-            # データベースとデータフォルダの所有権をアプリ実行ユーザー(1001)に強制変更
-            docker compose run --rm --user root migrate chown -R 1001:1001 /app/data
+            echo "==> fix database permissions (Strong Mode)"
+            # データベースフォルダ全体の権限を全開放し、アプリが確実に読み書きできるようにします
+            docker compose run --rm --user root migrate chmod -R 777 /app/data
 
             echo "==> launch services"
             docker compose up -d
 
-            echo "==> wait for stability & check logs"
-            # アプリが起動してエラーを吐くのを少し待つ
-            sleep 5
+            echo "==> wait for stability (10s)"
+            sleep 10
 
-            echo "--- DASHBOARD ERROR LOG START ---"
-            docker compose logs --tail=100 dashboard
-            echo "--- DASHBOARD ERROR LOG END ---"
+            echo "--- ALL SERVICES STATUS ---"
+            docker compose ps
+
+            echo "--- DASHBOARD LATEST LOGS ---"
+            # 500エラーの真犯人を探すためのログ
+            docker compose logs --tail=200 dashboard
+
+            echo "--- PUBLISHER LOGS (Check restarting) ---"
+            # 再起動を繰り返していた投稿担当のログ
+            docker compose logs --tail=50 publisher
 
             echo "==> restart caddy"
             docker compose restart caddy
