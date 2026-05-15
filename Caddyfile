@@ -26,9 +26,9 @@ http://210.131.223.49 {
 
     # Next.js へリバースプロキシ
     reverse_proxy dashboard:3000 {
-        # ヘルスチェック
-        health_uri     /api/health
-        health_interval 30s
+        # ヘルスチェック(一旦無効化して、Caddyの勘違いを防ぐ)
+        #health_uri     /api/health
+        #health_interval 30s
         # タイムアウト（記事生成 API が長い場合に備えて）
         transport http {
             response_header_timeout 120s
