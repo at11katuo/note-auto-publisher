@@ -36,10 +36,21 @@ jobs:
             docker compose up --exit-code-from migrate migrate
 
             echo "==> launch services"
-            # 残りアプリ本体をバックグラウンドで起動
+            # 残りのアプリ本体をバックグラウンドで起動
             docker compose up -d
 
-            echo "==> check dashboard logs"
+            # --- ここからデバッグ用コマンド ---
+            echo "==> wait 5 seconds for stability"
+            sleep 5
+
+            echo "==> check container status"
+            docker compose ps
+
+            echo "==> check caddy logs (gateway side)"
+            docker compose logs --tail=20 caddy
+
+            echo "==> check dashboard logs (app side)"
             docker compose logs --tail=50 dashboard
+            # --- ここまで ---
 
             echo "==> deploy complete"
