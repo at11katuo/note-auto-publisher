@@ -34,26 +34,22 @@ jobs:
             echo "==> run database migration"
             docker compose up --exit-code-from migrate migrate
 
-            echo "==> fix database permissions (Strong Mode)"
-            # データベースフォルダ全体の権限を全開放し、アプリが確実に読み書きできるようにします
+            echo "==> fix database permissions"
             docker compose run --rm --user root migrate chmod -R 777 /app/data
 
-            echo "==> launch services"
-            docker compose up -d
+            echo "==> launch services (without publisher for now)"
+            # 暴走している publisher を一旦止めるため、個別に起動します
+            docker compose up -d dashboard collector generator caddy
 
-            echo "==> wait for stability (10s)"
+            echo "==> stop and disable crashing publisher"
+            docker compose stop publisher || true
+
+            echo "==> wait for dashboard to stabilize"
             sleep 10
 
-            echo "--- ALL SERVICES STATUS ---"
+            echo "--- DASHBOARD STATUS & LOGS ---"
             docker compose ps
-
-            echo "--- DASHBOARD LATEST LOGS ---"
-            # 500エラーの真犯人を探すためのログ
-            docker compose logs --tail=200 dashboard
-
-            echo "--- PUBLISHER LOGS (Check restarting) ---"
-            # 再起動を繰り返していた投稿担当のログ
-            docker compose logs --tail=50 publisher
+            docker compose logs --tail=50 dashboard
 
             echo "==> restart caddy"
             docker compose restart caddy
