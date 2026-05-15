@@ -54,3 +54,8 @@ jobs:
             # --- ここまで ---
 
             echo "==> deploy complete"
+
+            echo "==> restart caddy to apply changes"
+            docker compose restart caddy
+
+            echo "==> deploy complete"
