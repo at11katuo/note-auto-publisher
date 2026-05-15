@@ -36,7 +36,7 @@ jobs:
             docker compose up --exit-code-from migrate migrate
 
             echo "==> launch services"
-            # 残りのアプリ本体をバックグラウンドで起動
+            # 残りアプリ本体をバックグラウンドで起動
             docker compose up -d
 
             echo "==> health check"
