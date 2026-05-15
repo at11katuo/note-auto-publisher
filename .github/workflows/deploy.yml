@@ -21,21 +21,25 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script_stop: true
           script: |
-            set -euo pipefail
+        set -euo pipefail
 
-            cd ${{ secrets.DEPLOY_PATH }}
+        cd ${{ secrets.DEPLOY_PATH }}
 
-            echo "==> git pull"
-            git pull origin main
+        echo "==> git pull"
+        git pull origin main
 
-            echo "==> docker compose build & restart"
-            # migrate サービスが先に完了し、その後 DB マイグレーションが実行される
-            docker compose up -d --build --remove-orphans
+        echo "==> docker compose build"
+        docker compose build
 
-            echo "==> waiting for migrate service to complete"
-            docker compose wait migrate
+        echo "==> run database migration"
+        # migrateが終わるまでここで待機し、失敗したらデプロイを止める
+        docker compose up --exit-code-from migrate migrate
 
-            echo "==> health check"
-            docker compose ps
+        echo "==> launch services"
+        # 残りのアプリ本体（dashboard, collector等）をバックグラウンドで起動
+        docker compose up -d
 
-            echo "==> deploy complete"
+        echo "==> health check"
+        docker compose ps
+
+        echo "==> deploy complete"
