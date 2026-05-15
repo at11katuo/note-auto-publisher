@@ -35,11 +35,19 @@ jobs:
             docker compose up --exit-code-from migrate migrate
 
             echo "==> fix database permissions"
-            # データベースファイルの所有者を、アプリが動くユーザー(1001)に変更します
+            # データベースとデータフォルダの所有権をアプリ実行ユーザー(1001)に強制変更
             docker compose run --rm --user root migrate chown -R 1001:1001 /app/data
 
             echo "==> launch services"
             docker compose up -d
+
+            echo "==> wait for stability & check logs"
+            # アプリが起動してエラーを吐くのを少し待つ
+            sleep 5
+
+            echo "--- DASHBOARD ERROR LOG START ---"
+            docker compose logs --tail=100 dashboard
+            echo "--- DASHBOARD ERROR LOG END ---"
 
             echo "==> restart caddy"
             docker compose restart caddy
