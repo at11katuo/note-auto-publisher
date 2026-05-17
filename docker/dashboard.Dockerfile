@@ -34,6 +34,20 @@ RUN pnpm install prisma @prisma/client -w
 RUN cd packages/db && pnpm exec prisma generate
 RUN pnpm --filter @note/dashboard build
 
+# Prisma ネイティブバイナリ（.node）を standalone の正しいパスへコピー
+# nft は動的 require を解析できないためバイナリが自動トレースされないことがある
+RUN set -e; \
+    BINARY=$(find /app/node_modules -name "libquery_engine-linux-musl*.node" -print -quit 2>/dev/null); \
+    if [ -n "$BINARY" ]; then \
+      REL_DIR=$(dirname "$BINARY" | sed 's|^/app/||'); \
+      DEST_DIR="/app/apps/dashboard/.next/standalone/$REL_DIR"; \
+      mkdir -p "$DEST_DIR"; \
+      cp "$BINARY" "$DEST_DIR/"; \
+      echo "Prisma binary => $DEST_DIR/$(basename $BINARY)"; \
+    else \
+      echo "WARNING: libquery_engine-linux-musl*.node not found" >&2; \
+    fi
+
 # ── Stage 3: runner ──────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
