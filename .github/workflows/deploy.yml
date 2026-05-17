@@ -53,10 +53,18 @@ jobs:
             docker compose ps
             docker compose logs --tail=100 dashboard
 
-            echo "==> trigger request (collector → dashboard:3000 via internal network)"
-            docker compose exec -T collector \
-              wget -qO- --server-response http://dashboard:3000 2>&1 | head -300 || true
+            echo "==> trigger request (collector → dashboard:3000 via Node.js HTTP)"
+            docker compose exec -T collector node -e "
+              const http = require('http');
+              http.get('http://dashboard:3000', (res) => {
+                console.log('STATUS:', res.statusCode);
+                let body = '';
+                res.on('data', c => body += c);
+                res.on('end', () => { process.stdout.write(body.slice(0, 4000) + '\n'); });
+              }).on('error', e => { console.error('REQUEST ERROR:', e.message); });
+            " 2>&1 || true
 
+            sleep 3
             echo "--- DASHBOARD LOGS (post-request) ---"
             docker compose logs --tail=300 dashboard
 
