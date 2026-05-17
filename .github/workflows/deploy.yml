@@ -44,10 +44,6 @@ jobs:
             # すべてのサービス（常駐ワーカー含む）を起動します
             docker compose up -d
 
-            echo "==> run note login setup (First time only)"
-            # 初回限定で、noteへのログインセッションをサーバーに記憶させます
-            docker compose run --rm publisher pnpm --filter @note/publisher login
-
             echo "==> wait for stability"
             sleep 5
 
