@@ -32,33 +32,24 @@ jobs:
             docker compose build
 
             echo "==> stop and remove existing containers"
-            # 一度すべて止めて、きれいに掃除します
             docker compose down
 
             echo "==> run database migration"
             docker compose up --exit-code-from migrate migrate
 
-            echo "==> fix database permissions (Final Fix)"
-            # データベースフォルダをアプリ(1001)が自由に使えるようにします
+            echo "==ly fix database permissions"
             docker compose run --rm --user root migrate chmod -R 777 /app/data
 
-            echo "==> launch services (excluding publisher)"
-            # 暴走の元凶である publisher は一旦起動させません
-            docker compose up -d dashboard collector generator caddy
+            echo "==> launch services (including background publisher)"
+            # すべてのサービス（常駐ワーカー含む）を起動します
+            docker compose up -d
 
-            echo "==> wait for Next.js startup"
-            sleep 20
+            echo "==> run note login setup (First time only)"
+            # 初回限定で、noteへのログインセッションをサーバーに記憶させます
+            docker compose run --rm publisher pnpm --filter @note/publisher start -- --login-only
 
-            echo "--- DASHBOARD LOGS (startup) ---"
-            docker compose ps
-            docker compose logs --tail=100 dashboard
-
-            echo "==> trigger request (collector → dashboard:3000 via Node.js HTTP)"
-            docker compose exec -T collector node -e "const h=require('http');h.get('http://dashboard:3000',(r)=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{process.stdout.write('STATUS:'+r.statusCode+'\n'+d.slice(0,4000)+'\n');process.exit(0);});}).on('error',(e)=>{process.stderr.write('REQUEST_ERROR:'+e.message+'\n');process.exit(0);});" 2>&1 || true
-
-            sleep 3
-            echo "--- DASHBOARD LOGS (post-request) ---"
-            docker compose logs --tail=300 dashboard
+            echo "==> wait for stability"
+            sleep 5
 
             echo "==> restart caddy"
             docker compose restart caddy

@@ -7,6 +7,8 @@ import { createDraftOnNote } from './post.js'
 
 const log = createLogger('publisher:cli')
 
+const DAEMON_POLL_INTERVAL_MS = 30_000
+
 function parseTags(rawJson: string): string[] {
   try {
     const parsed: unknown = JSON.parse(rawJson)
@@ -128,6 +130,44 @@ async function runPublishDraft(draftId: string): Promise<number> {
   }
 }
 
+async function runDaemon(): Promise<never> {
+  log.info('mode=daemon starting')
+
+  // 前回クラッシュ時に publishing のまま残ったドラフトを approved に戻す
+  const recovered = await prisma.draft.updateMany({
+    where: { status: 'publishing' },
+    data: { status: 'approved' },
+  })
+  if (recovered.count > 0) {
+    log.warn({ count: recovered.count }, 'recovered stuck publishing drafts → approved')
+  }
+
+  log.info(`polling for publishing drafts every ${DAEMON_POLL_INTERVAL_MS / 1000}s`)
+
+  while (true) {
+    try {
+      const draft = await prisma.draft.findFirst({
+        where: { status: 'publishing' },
+        orderBy: { generatedAt: 'asc' },
+      })
+
+      if (draft) {
+        log.info({ draftId: draft.id }, 'found publishing draft — starting')
+        const code = await runPublishDraft(draft.id)
+        if (code !== 0) {
+          log.warn({ draftId: draft.id, code }, 'publish failed; draft reset to approved for retry')
+        }
+        // 次のポーリングまで待たずに続けてチェック（複数キューがある場合に対応）
+        continue
+      }
+    } catch (err) {
+      log.error({ err }, 'daemon poll error')
+    }
+
+    await new Promise<void>((resolve) => setTimeout(resolve, DAEMON_POLL_INTERVAL_MS))
+  }
+}
+
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
@@ -147,8 +187,9 @@ async function main(): Promise<number> {
     return runPublishDraft(draftId)
   }
 
-  log.error('usage: publisher --login-only | --draft-id <id>')
-  return 1
+  // フラグなしはデーモンモード（docker-compose のデフォルト起動）
+  await runDaemon()
+  return 0
 }
 
 main()
