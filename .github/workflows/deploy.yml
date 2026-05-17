@@ -46,7 +46,7 @@ jobs:
 
             echo "==> run note login setup (First time only)"
             # 初回限定で、noteへのログインセッションをサーバーに記憶させます
-            docker compose run --rm publisher pnpm --filter @note/publisher start -- --login-only
+            docker compose run --rm publisher pnpm --filter @note/publisher login
 
             echo "==> wait for stability"
             sleep 5
