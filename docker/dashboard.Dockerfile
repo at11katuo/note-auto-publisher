@@ -34,18 +34,27 @@ RUN pnpm install prisma @prisma/client -w
 RUN cd packages/db && pnpm exec prisma generate
 RUN pnpm --filter @note/dashboard build
 
-# Prisma ネイティブバイナリ（.node）を standalone の正しいパスへコピー
-# nft は動的 require を解析できないためバイナリが自動トレースされないことがある
+# Prisma 生成クライアント（index.js + .so.node バイナリ）を standalone へコピー
+# @prisma/client は .prisma/client/ ディレクトリ内のファイルを動的 require するため
+# nft（Next.js ファイルトレーサー）では追跡されず standalone に含まれない
+# → pnpm ストア内の .prisma/client/ を特定してディレクトリごとコピーする
 RUN set -e; \
-    BINARY=$(find /app/node_modules -name "libquery_engine-linux-musl*.node" -print -quit 2>/dev/null); \
-    if [ -n "$BINARY" ]; then \
-      REL_DIR=$(dirname "$BINARY" | sed 's|^/app/||'); \
+    # 優先: pnpm 仮想ストア内の @prisma+client に隣接する .prisma/client/
+    PRISMA_DIR=$(find /app/node_modules/.pnpm -type d -name "client" \
+        -path "*/.prisma/client" 2>/dev/null | head -1); \
+    # フォールバック: packages/db/node_modules/.prisma/client/
+    if [ -z "$PRISMA_DIR" ]; then \
+      PRISMA_DIR=$(find /app/packages/db/node_modules -type d -name "client" \
+          -path "*/.prisma/client" 2>/dev/null | head -1); \
+    fi; \
+    if [ -n "$PRISMA_DIR" ]; then \
+      REL_DIR=$(echo "$PRISMA_DIR" | sed 's|^/app/||'); \
       DEST_DIR="/app/apps/dashboard/.next/standalone/$REL_DIR"; \
       mkdir -p "$DEST_DIR"; \
-      cp "$BINARY" "$DEST_DIR/"; \
-      echo "Prisma binary => $DEST_DIR/$(basename $BINARY)"; \
+      cp -r "$PRISMA_DIR/." "$DEST_DIR/"; \
+      echo "Copied .prisma/client => $DEST_DIR"; \
     else \
-      echo "WARNING: libquery_engine-linux-musl*.node not found" >&2; \
+      echo "WARNING: .prisma/client directory not found" >&2; \
     fi
 
 # ── Stage 3: runner ──────────────────────────────────────────
