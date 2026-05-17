@@ -31,25 +31,27 @@ jobs:
             echo "==> docker compose build"
             docker compose build
 
+            echo "==> stop and remove existing containers"
+            # 一度すべて止めて、きれいに掃除します
+            docker compose down
+
             echo "==> run database migration"
             docker compose up --exit-code-from migrate migrate
 
-            echo "==> fix database permissions"
+            echo "==> fix database permissions (Final Fix)"
+            # データベースフォルダをアプリ(1001)が自由に使えるようにします
             docker compose run --rm --user root migrate chmod -R 777 /app/data
 
-            echo "==> launch services (without publisher for now)"
-            # 暴走している publisher を一旦止めるため、個別に起動します
+            echo "==> launch services (excluding publisher)"
+            # 暴走の元凶である publisher は一旦起動させません
             docker compose up -d dashboard collector generator caddy
 
-            echo "==> stop and disable crashing publisher"
-            docker compose stop publisher || true
-
-            echo "==> wait for dashboard to stabilize"
+            echo "==> wait for stability"
             sleep 10
 
             echo "--- DASHBOARD STATUS & LOGS ---"
             docker compose ps
-            docker compose logs --tail=50 dashboard
+            docker compose logs --tail=100 dashboard
 
             echo "==> restart caddy"
             docker compose restart caddy
