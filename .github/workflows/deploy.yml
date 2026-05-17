@@ -49,9 +49,13 @@ jobs:
             echo "==> wait for stability"
             sleep 10
 
-            echo "--- DASHBOARD STATUS & LOGS ---"
+            echo "==> trigger request to force runtime error into logs"
+            docker compose exec -T dashboard \
+              wget -qO- http://localhost:3000 2>&1 || true
+
+            echo "--- DASHBOARD STATUS & LOGS (post-request) ---"
             docker compose ps
-            docker compose logs --tail=100 dashboard
+            docker compose logs --tail=200 dashboard
 
             echo "==> restart caddy"
             docker compose restart caddy
