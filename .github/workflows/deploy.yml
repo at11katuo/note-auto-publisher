@@ -46,16 +46,19 @@ jobs:
             # 暴走の元凶である publisher は一旦起動させません
             docker compose up -d dashboard collector generator caddy
 
-            echo "==> wait for stability"
-            sleep 10
+            echo "==> wait for Next.js startup"
+            sleep 20
 
-            echo "==> trigger request to force runtime error into logs"
-            docker compose exec -T dashboard \
-              wget -qO- http://localhost:3000 2>&1 || true
-
-            echo "--- DASHBOARD STATUS & LOGS (post-request) ---"
+            echo "--- DASHBOARD LOGS (startup) ---"
             docker compose ps
-            docker compose logs --tail=200 dashboard
+            docker compose logs --tail=100 dashboard
+
+            echo "==> trigger request (collector → dashboard:3000 via internal network)"
+            docker compose exec -T collector \
+              wget -qO- --server-response http://dashboard:3000 2>&1 | head -300 || true
+
+            echo "--- DASHBOARD LOGS (post-request) ---"
+            docker compose logs --tail=300 dashboard
 
             echo "==> restart caddy"
             docker compose restart caddy
