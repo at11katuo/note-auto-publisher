@@ -27,6 +27,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: file:/app/data/prod.db
+      PRISMA_QUERY_ENGINE_LIBRARY: /app/prisma-engine/libquery_engine-linux-musl-openssl-3.0.x.so.node
     volumes:
       - db_data:/app/data
     restart: unless-stopped

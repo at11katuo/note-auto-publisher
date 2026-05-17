@@ -57,6 +57,22 @@ RUN set -e; \
       echo "WARNING: .prisma/client directory not found" >&2; \
     fi
 
+# Prisma クエリエンジンバイナリを既知の固定パスにもコピーし PRISMA_QUERY_ENGINE_LIBRARY で直接指定
+# pnpm 仮想ストアの深いパス解決に依存せず確実にバイナリを見つけられるようにする
+RUN set -e; \
+    BINARY=$(find /app -name "libquery_engine-linux-musl-openssl-3.0.x.so.node" \
+        -path "*@prisma*" 2>/dev/null | head -1); \
+    if [ -z "$BINARY" ]; then \
+      BINARY=$(find /app -name "libquery_engine-linux-musl-openssl-3.0.x.so.node" 2>/dev/null | head -1); \
+    fi; \
+    if [ -n "$BINARY" ]; then \
+      mkdir -p /app/apps/dashboard/.next/standalone/prisma-engine; \
+      cp "$BINARY" /app/apps/dashboard/.next/standalone/prisma-engine/; \
+      echo "Copied Prisma engine binary: $BINARY"; \
+    else \
+      echo "ERROR: libquery_engine-linux-musl-openssl-3.0.x.so.node not found" >&2; exit 1; \
+    fi
+
 # ── Stage 3: runner ──────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -65,6 +81,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/prisma-engine/libquery_engine-linux-musl-openssl-3.0.x.so.node
 
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 
