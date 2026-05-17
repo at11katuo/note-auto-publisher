@@ -81,7 +81,7 @@ services:
     build:
       context: .
       dockerfile: docker/worker.Dockerfile
-    command: ["pnpm", "--filter", "@note/publisher", "start", "--", "--login-only"]
+    command: ["pnpm", "--filter", "@note/publisher", "start"]
     env_file: .env
     environment:
       DATABASE_URL: file:/app/data/prod.db
@@ -89,7 +89,7 @@ services:
     volumes:
       - db_data:/app/data
       - auth_state:/app/apps/publisher/.auth
-    restart: "no"
+    restart: unless-stopped
     depends_on:
       migrate:
         condition: service_completed_successfully

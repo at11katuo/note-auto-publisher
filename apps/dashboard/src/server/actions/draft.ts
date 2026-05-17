@@ -1,7 +1,5 @@
 'use server';
 
-import { spawn } from 'node:child_process';
-import path from 'node:path';
 import { prisma } from '@note/db';
 import { revalidatePath } from 'next/cache';
 
@@ -53,18 +51,7 @@ export async function triggerPublish(id: string, _formData?: FormData): Promise<
     );
   }
 
-  const monorepoRoot = path.resolve(process.cwd(), '..', '..');
-  const child = spawn('pnpm', ['publish:run', '--draft-id', id], {
-    cwd: monorepoRoot,
-    detached: true,
-    stdio: 'ignore',
-    shell: true,
-  });
-  child.on('error', (err) => {
-    console.error(`[triggerPublish] failed to spawn publisher for ${id}:`, err);
-  });
-  child.unref();
-
+  // status を publishing に変更し、publisher daemon がポーリングで検知して処理する
   await prisma.draft.update({
     where: { id },
     data: { status: 'publishing' },
