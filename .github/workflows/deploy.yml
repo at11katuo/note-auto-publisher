@@ -54,15 +54,7 @@ jobs:
             docker compose logs --tail=100 dashboard
 
             echo "==> trigger request (collector → dashboard:3000 via Node.js HTTP)"
-            docker compose exec -T collector node -e "
-              const http = require('http');
-              http.get('http://dashboard:3000', (res) => {
-                console.log('STATUS:', res.statusCode);
-                let body = '';
-                res.on('data', c => body += c);
-                res.on('end', () => { process.stdout.write(body.slice(0, 4000) + '\n'); });
-              }).on('error', e => { console.error('REQUEST ERROR:', e.message); });
-            " 2>&1 || true
+            docker compose exec -T collector node -e "const h=require('http');h.get('http://dashboard:3000',(r)=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{process.stdout.write('STATUS:'+r.statusCode+'\n'+d.slice(0,4000)+'\n');process.exit(0);});}).on('error',(e)=>{process.stderr.write('REQUEST_ERROR:'+e.message+'\n');process.exit(0);});" 2>&1 || true
 
             sleep 3
             echo "--- DASHBOARD LOGS (post-request) ---"
