@@ -10,10 +10,11 @@ const nextConfig = {
   experimental: {
     // monorepo ルートからファイルトレースするために必要
     outputFileTracingRoot: path.join(__dirname, '../../'),
-    // Prisma ネイティブバイナリは自動トレースで漏れることがあるため明示的に含める
-    // pnpm の配置場所はホイスト有無によって異なるため両パスを指定
+    // Prisma ネイティブバイナリは動的 require のため nft で自動トレースされない
+    // pnpm 仮想ストアのパスを含むよう広めのグロブで指定
     outputFileTracingIncludes: {
       '/**': [
+        '../../node_modules/.pnpm/**/.prisma/client/**',
         '../../node_modules/.prisma/client/**',
         '../../packages/db/node_modules/.prisma/client/**',
       ],
