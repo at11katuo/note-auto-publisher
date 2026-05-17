@@ -59,11 +59,6 @@ COPY --from=builder --chown=nextjs:nodejs \
   /app/apps/dashboard/public \
   ./apps/dashboard/public
 
-# Prisma ネイティブクエリエンジン（ファイルトレースで漏れることがあるため明示コピー）
-COPY --from=builder --chown=nextjs:nodejs \
-  /app/node_modules/.prisma \
-  ./node_modules/.prisma
-
 USER nextjs
 EXPOSE 3000
 
