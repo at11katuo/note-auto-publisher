@@ -44,6 +44,9 @@ jobs:
             # すべてのサービス（常駐ワーカー含む）を起動します
             docker compose up -d
 
+            echo "==> note login (stored session を再利用、無ければ自動ログイン)"
+            docker compose run --rm -e NOTE_EMAIL="${{ secrets.NOTE_EMAIL }}" -e NOTE_PASSWORD="${{ secrets.NOTE_PASSWORD }}" publisher pnpm --filter @note/publisher login || true
+
             echo "==> wait for stability"
             sleep 5
 
