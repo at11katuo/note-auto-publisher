@@ -1,0 +1,35 @@
+name: Generate Drafts
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: '生成する下書き数（1〜10）'
+        required: true
+        default: '3'
+        type: string
+
+jobs:
+  generate:
+    name: Run Generator
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Generate via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            echo "==> Generating ${{ inputs.batch_size }} draft(s)..."
+            docker compose run --rm generator \
+              pnpm --filter @note/generator start -- --batch ${{ inputs.batch_size }}
+
+            echo "==> Done"
