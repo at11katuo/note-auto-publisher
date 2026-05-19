@@ -2,13 +2,7 @@ import Parser from 'rss-parser'
 import { ok, type Result } from '@note/shared'
 import type { Logger } from '@note/logger'
 import type { RawIdea } from '../types.js'
-
-const RSS_FEEDS = [
-  { name: 'nikkei', url: 'https://www.nikkei.com/markets/rss/' },
-  { name: 'coindeskjp', url: 'https://www.coindeskjapan.com/feed/' },
-  { name: 'neweconomy', url: 'https://www.neweconomy.jp/feed' },
-  { name: 'reuters', url: 'https://jp.reuters.com/rssFeed/businessNews' },
-] as const
+import { RSS_FEEDS } from '../config/feeds.js'
 
 const LOOKBACK_MS = 24 * 60 * 60 * 1000
 
