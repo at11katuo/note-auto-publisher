@@ -3,7 +3,7 @@ import type { Logger } from '@note/logger'
 import type { RawIdea } from '../types.js'
 
 const SEARCH_QUERY =
-  'NISA OR iDeCo OR FIRE OR 仮想通貨 OR ETH lang:ja -is:retweet'
+  '(インデックス投資 OR NISA OR eMAXIS OR iDeCo OR つみたてNISA OR 業務自動化 OR GitHubActions OR 筋トレ OR ダイエット) lang:ja -is:retweet'
 const MAX_RESULTS = 10
 const X_API_BASE = 'https://api.twitter.com/2'
 
