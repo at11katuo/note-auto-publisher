@@ -1,0 +1,30 @@
+name: Add Local SSH Key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  add-key:
+    name: Register local public key on VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Append public key via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            PUBKEY="${{ secrets.LOCAL_SSH_PUBKEY }}"
+            if grep -qF "$PUBKEY" ~/.ssh/authorized_keys 2>/dev/null; then
+              echo "Key already registered — skipping"
+            else
+              echo "$PUBKEY" >> ~/.ssh/authorized_keys
+              chmod 600 ~/.ssh/authorized_keys
+              echo "Key added successfully"
+            fi
