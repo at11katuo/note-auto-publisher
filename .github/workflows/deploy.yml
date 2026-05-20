@@ -10,7 +10,6 @@ jobs:
     name: SSH Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -22,18 +21,13 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-
             cd ${{ secrets.DEPLOY_PATH }}
 
             echo "==> git pull"
             git pull origin main
 
             echo "==> write .env from GitHub Secrets"
-            cat > .env << 'EOF'
-DATABASE_URL=file:/app/data/prod.db
-NODE_ENV=production
-LOG_LEVEL=info
-EOF
+            printf 'DATABASE_URL=file:/app/data/prod.db\nNODE_ENV=production\nLOG_LEVEL=info\n' > .env
             echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
             echo "NOTE_EMAIL=${{ secrets.NOTE_EMAIL }}" >> .env
             echo "NOTE_PASSWORD=${{ secrets.NOTE_PASSWORD }}" >> .env
@@ -54,11 +48,10 @@ EOF
             echo "==> run database migration"
             docker compose up --exit-code-from migrate migrate
 
-            echo "==ly fix database permissions"
+            echo "==> fix database permissions"
             docker compose run --rm --user root migrate chmod -R 777 /app/data
 
             echo "==> launch services (including background publisher)"
-            # すべてのサービス（常駐ワーカー含む）を起動します
             docker compose up -d
 
             echo "==> note login (stored session を再利用、無ければ自動ログイン)"
