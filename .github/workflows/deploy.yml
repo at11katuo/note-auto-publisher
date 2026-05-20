@@ -28,6 +28,20 @@ jobs:
             echo "==> git pull"
             git pull origin main
 
+            echo "==> write .env from GitHub Secrets"
+            cat > .env << 'EOF'
+DATABASE_URL=file:/app/data/prod.db
+NODE_ENV=production
+LOG_LEVEL=info
+EOF
+            echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
+            echo "NOTE_EMAIL=${{ secrets.NOTE_EMAIL }}" >> .env
+            echo "NOTE_PASSWORD=${{ secrets.NOTE_PASSWORD }}" >> .env
+            echo "DASHBOARD_BASIC_USER=${{ secrets.DASHBOARD_BASIC_USER }}" >> .env
+            echo "DASHBOARD_BASIC_PASS=${{ secrets.DASHBOARD_BASIC_PASS }}" >> .env
+            echo "DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_WEBHOOK_URL }}" >> .env
+            echo "X_BEARER_TOKEN=${{ secrets.X_BEARER_TOKEN }}" >> .env
+
             echo "==> docker compose build"
             docker compose build
 
