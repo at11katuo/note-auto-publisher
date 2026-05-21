@@ -20,8 +20,55 @@ jobs:
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
 
-            echo "=== PUBLISHER LOGS ==="
+            echo "=============================="
+            echo "=== CONTAINER STATUS       ==="
+            echo "=============================="
+            docker compose ps
+
+            echo ""
+            echo "=============================="
+            echo "=== DB FILE (publisher)    ==="
+            echo "=============================="
+            docker compose exec -T publisher ls -lah /app/data/ 2>/dev/null || echo "[publisher not running]"
+
+            echo ""
+            echo "=============================="
+            echo "=== DB FILE (dashboard)    ==="
+            echo "=============================="
+            docker compose exec -T dashboard ls -lah /app/data/ 2>/dev/null || echo "[dashboard not running]"
+
+            echo ""
+            echo "=============================="
+            echo "=== DRAFT STATUS IN DB     ==="
+            echo "=============================="
+            docker compose exec -T publisher node --input-type=module << 'EOF'
+            import { createRequire } from 'module';
+            const require = createRequire(import.meta.url);
+            process.env.DATABASE_URL = 'file:/app/data/prod.db';
+            const { PrismaClient } = require('@prisma/client');
+            const p = new PrismaClient({ datasources: { db: { url: 'file:/app/data/prod.db' } } });
+            const counts = await p.draft.groupBy({ by: ['status'], _count: { _all: true } });
+            console.log('Draft counts by status:', JSON.stringify(counts));
+            const publishing = await p.draft.findMany({ where: { status: 'publishing' }, select: { id: true, title: true, generatedAt: true } });
+            console.log('Publishing drafts:', JSON.stringify(publishing));
+            await p.$disconnect();
+            EOF
+            echo "[DB query done]"
+
+            echo ""
+            echo "=============================="
+            echo "=== PUBLISHER LOGS (100)   ==="
+            echo "=============================="
             docker compose logs --tail=100 publisher
 
-            echo "=== CADDY/DASHBOARD LOGS ==="
-            docker compose logs --tail=50 caddy
+            echo ""
+            echo "=============================="
+            echo "=== DASHBOARD LOGS (50)    ==="
+            echo "=============================="
+            docker compose logs --tail=50 dashboard
+
+            echo ""
+            echo "=============================="
+            echo "=== GENERATOR LOGS (30)    ==="
+            echo "=============================="
+            docker compose logs --tail=30 generator
