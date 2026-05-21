@@ -72,7 +72,11 @@ async function runPublishDraft(draftId: string): Promise<number> {
   try {
     const loginRes = await ensureLoggedIn(session.page)
     if (loginRes.isErr()) {
-      log.error({ err: loginRes.error, draftId }, 'login failed')
+      log.error({ err: loginRes.error, draftId }, 'login failed — resetting draft to approved')
+      await prisma.draft.update({
+        where: { id: draftId },
+        data: { status: 'approved' },
+      })
       await prisma.publishLog.create({
         data: {
           draftId,

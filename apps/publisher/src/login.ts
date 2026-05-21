@@ -38,11 +38,16 @@ async function isLoggedIn(page: Page): Promise<boolean> {
       waitUntil: 'domcontentloaded',
       timeout: TIMEOUT_NAVIGATION,
     })
-    await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {
-      timeout: TIMEOUT_LOGIN_CHECK,
-      state: 'attached',
-    })
-    return true
+    const currentUrl = page.url()
+    // ログインページにリダイレクトされたら未ログイン確定
+    if (currentUrl.includes('/login') || currentUrl.includes('/signup')) {
+      return false
+    }
+    // URL がホームのままならセッション有効とみなす（セレクタより信頼性が高い）
+    const marker = await page.$(SELECTOR_LOGGED_IN_MARKER)
+    if (marker) return true
+    // セレクタが見つからなくても /login にいなければセッションは有効と判断
+    return !currentUrl.includes('/login')
   } catch {
     return false
   }
