@@ -1,8 +1,9 @@
+import { rmSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { createLogger } from '@note/logger'
 import { prisma } from '@note/db'
-import { closeBrowser, launchBrowser, type BrowserSession } from './browser.js'
-import { ensureLoggedIn } from './login.js'
+import { closeBrowser, launchBrowser, STORAGE_STATE_PATH, type BrowserSession } from './browser.js'
+import { ensureLoggedIn, forceLogin } from './login.js'
 import { createDraftOnNote } from './post.js'
 
 const log = createLogger('publisher:cli')
@@ -26,7 +27,17 @@ async function safeCloseBrowser(session: BrowserSession): Promise<void> {
 }
 
 async function runLoginOnly(): Promise<number> {
-  log.info('mode=login-only')
+  log.info('mode=login-only: clearing stored session and forcing fresh login')
+
+  // 古いセッションファイルをコード内で確実に削除してから起動する。
+  // これにより launchBrowser が stale な Cookie を Context に読み込むのを防ぐ。
+  try {
+    rmSync(STORAGE_STATE_PATH, { force: true })
+    log.info({ path: STORAGE_STATE_PATH }, 'cleared stored session file')
+  } catch (e) {
+    log.warn({ err: e }, 'could not clear session file (may not exist)')
+  }
+
   const launched = await launchBrowser({ headless: process.env['PLAYWRIGHT_HEADLESS'] !== 'false' })
   if (launched.isErr()) {
     log.error({ err: launched.error }, 'browser launch failed')
@@ -34,12 +45,12 @@ async function runLoginOnly(): Promise<number> {
   }
   const session = launched.value
   try {
-    const r = await ensureLoggedIn(session.page)
+    const r = await forceLogin(session.page)
     if (r.isErr()) {
-      log.error({ err: r.error }, 'login failed')
+      log.error({ err: r.error }, 'force login failed')
       return 1
     }
-    log.info({ reused: r.value.reused }, 'login confirmed; session stored')
+    log.info('force login complete; new session stored')
     return 0
   } finally {
     await safeCloseBrowser(session)
