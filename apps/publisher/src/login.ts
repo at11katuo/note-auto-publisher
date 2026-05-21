@@ -108,3 +108,24 @@ export function ensureLoggedIn(
     (e) => new LoginError('ensureLoggedIn failed', e),
   )
 }
+
+/** セッションキャッシュを完全に無視して必ず新規ログインを実行する（--login-only 専用）*/
+export function forceLogin(
+  page: Page,
+): ResultAsync<void, LoginError> {
+  return ResultAsync.fromPromise(
+    (async () => {
+      log.info('force-login: skipping stored session, performing fresh login')
+      await performLogin(page)
+
+      const ctx = page.context()
+      const saved = await saveStorageState(ctx)
+      if (saved.isErr()) {
+        throw saved.error
+      }
+
+      log.info('force-login: new session saved')
+    })(),
+    (e) => new LoginError('forceLogin failed', e),
+  )
+}
