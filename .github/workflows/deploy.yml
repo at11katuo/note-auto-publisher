@@ -39,8 +39,8 @@ jobs:
             echo "==> docker compose build"
             docker compose build
 
-            echo "==> stop and remove existing containers (including volumes and networks)"
-            docker compose down -v
+            echo "==> stop and remove existing containers"
+            docker compose down
 
             echo "==> remove stale one-off containers"
             docker rm -f note-auto-publisher-migrate-1 2>/dev/null || true
