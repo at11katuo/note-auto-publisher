@@ -1,0 +1,27 @@
+name: Check Logs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  logs:
+    name: Fetch VPS Logs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Fetch logs via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            echo "=== PUBLISHER LOGS ==="
+            docker compose logs --tail=100 publisher
+
+            echo "=== CADDY/DASHBOARD LOGS ==="
+            docker compose logs --tail=50 caddy
