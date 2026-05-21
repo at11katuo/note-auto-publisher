@@ -139,6 +139,19 @@ async function waitForSavedUrl(page: Page): Promise<string> {
   return page.url()
 }
 
+const SCREENSHOT_PATH = '/app/data/error-screenshot.png'
+
+async function captureErrorScreenshot(page: Page, context: string): Promise<void> {
+  try {
+    const url = page.url()
+    log.error({ context, url }, 'capturing error screenshot')
+    await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true })
+    log.error({ path: SCREENSHOT_PATH, url }, 'screenshot saved — view at /api/screenshot')
+  } catch (e) {
+    log.warn({ err: e }, 'failed to capture error screenshot')
+  }
+}
+
 export function createDraftOnNote(
   page: Page,
   draft: DraftPayload,
@@ -154,8 +167,12 @@ export function createDraftOnNote(
         waitUntil: 'domcontentloaded',
         timeout: TIMEOUT_NAVIGATION,
       })
+      log.info({ url: page.url() }, 'navigated to notes/new')
 
-      await fillTitle(page, draft.title)
+      await fillTitle(page, draft.title).catch(async (e: unknown) => {
+        await captureErrorScreenshot(page, 'fillTitle failed')
+        throw e
+      })
       log.info('title filled')
 
       await fillBody(page, draft.body)
@@ -164,13 +181,19 @@ export function createDraftOnNote(
       await fillTags(page, draft.tags)
       log.info({ tagCount: draft.tags.length }, 'tags filled')
 
-      await clickSaveDraft(page)
+      await clickSaveDraft(page).catch(async (e: unknown) => {
+        await captureErrorScreenshot(page, 'clickSaveDraft failed')
+        throw e
+      })
       log.info('save-draft clicked')
 
       // note 側の保存通信が完了する前にブラウザを閉じてしまわないよう待機する
       await page.waitForTimeout(5_000)
 
-      const noteUrl = await waitForSavedUrl(page)
+      const noteUrl = await waitForSavedUrl(page).catch(async (e: unknown) => {
+        await captureErrorScreenshot(page, 'waitForSavedUrl failed')
+        throw e
+      })
       log.info({ noteUrl }, 'draft saved')
 
       // URL 遷移後も保存処理が継続している可能性があるため、念のため追加で待機する
