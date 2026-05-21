@@ -26,6 +26,11 @@ jobs:
             echo "==> git pull"
             git pull origin main
 
+            echo "==> clear stale note session"
+            sudo rm -rf apps/publisher/.auth/note.json 2>/dev/null || true
+            sudo rm -rf .auth/note.json 2>/dev/null || true
+            sudo rm -rf /var/lib/docker/volumes/note-auto-publisher_auth_state/_data/note.json 2>/dev/null || true
+
             echo "==> write .env from GitHub Secrets"
             printf 'DATABASE_URL=file:/app/data/prod.db\nNODE_ENV=production\nLOG_LEVEL=info\n' > .env
             echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
