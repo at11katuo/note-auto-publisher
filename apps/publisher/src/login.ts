@@ -83,15 +83,33 @@ async function performLogin(page: Page): Promise<void> {
     timeout: TIMEOUT_NAVIGATION,
   })
 
+  // Vue が完全に mount されるまで待つ
   await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
+  await page.waitForLoadState('networkidle', { timeout: TIMEOUT_NAVIGATION })
 
-  // Playwright の fill() は内部で input/change イベントを発火するため
-  // 手動 dispatchEvent は不要（二重発火で Vue が空値で上書きしてしまう）。
-  const emailInput = page.locator(SELECTOR_EMAIL).first()
-  await emailInput.fill(env.NOTE_EMAIL)
-
-  const passwordInput = page.locator(SELECTOR_PASSWORD).first()
-  await passwordInput.fill(env.NOTE_PASSWORD)
+  // fill() / pressSequentially はいずれも Vue の beforeinput ハンドラに干渉して
+  // フィールドがリセットされる。nativeSetter で DOM 値を直接書き込み、
+  // input イベントだけを発火して Vue v-model に最小限の通知を送る。
+  await page.evaluate(
+    ({ emailSel, passwordSel, email, password }) => {
+      function setNativeValue(selector: string, value: string): void {
+        const el = document.querySelector<HTMLInputElement>(selector)
+        if (!el) throw new Error(`not found: ${selector}`)
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        if (setter) setter.call(el, value)
+        else el.value = value
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      setNativeValue(emailSel, email)
+      setNativeValue(passwordSel, password)
+    },
+    {
+      emailSel: 'input[type="email"], input[name="login"], input[id="email"]',
+      passwordSel: 'input[type="password"]',
+      email: env.NOTE_EMAIL,
+      password: env.NOTE_PASSWORD,
+    },
+  )
 
   // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
