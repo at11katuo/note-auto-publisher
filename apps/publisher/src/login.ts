@@ -85,13 +85,18 @@ async function performLogin(page: Page): Promise<void> {
 
   await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
 
-  // page.fill() は DOM 値を直接書き換えるだけで Vue.js の input イベントが発火しない。
-  // click → type でキーストロークを模倣し、フォームバリデーションを確実にトリガーする。
+  // page.fill() は Vue.js の input イベントを発火しないため type() を使う。
+  // click 直後に type() を始めるとフォーカス確定前の文字が抜け落ちるため、
+  // Ctrl+A で既存テキストをクリアしてから入力する。
   await page.click(SELECTOR_EMAIL)
-  await page.type(SELECTOR_EMAIL, env.NOTE_EMAIL, { delay: 50 })
+  await page.waitForTimeout(300)
+  await page.keyboard.press('Control+a')
+  await page.keyboard.type(env.NOTE_EMAIL, { delay: 40 })
 
   await page.click(SELECTOR_PASSWORD)
-  await page.type(SELECTOR_PASSWORD, env.NOTE_PASSWORD, { delay: 50 })
+  await page.waitForTimeout(300)
+  await page.keyboard.press('Control+a')
+  await page.keyboard.type(env.NOTE_PASSWORD, { delay: 40 })
 
   // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
