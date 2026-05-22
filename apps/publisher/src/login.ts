@@ -85,17 +85,19 @@ async function performLogin(page: Page): Promise<void> {
 
   await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
 
-  // pressSequentially はロケータに直接紐づいてキーを一文字ずつ送出するため
-  // フォーカスずれによる文字落ちが起きず、Vue.js の input イベントも確実に発火する。
+  // fill() で値を確実にセットしたうえで Vue.js の input/change イベントを手動発火する。
+  // pressSequentially は Windows 環境で先頭文字が落ちるケースがあるため使わない。
   const emailInput = page.locator(SELECTOR_EMAIL).first()
   await emailInput.click()
-  await page.waitForTimeout(400)
-  await emailInput.pressSequentially(env.NOTE_EMAIL, { delay: 40 })
+  await emailInput.fill(env.NOTE_EMAIL)
+  await emailInput.dispatchEvent('input')
+  await emailInput.dispatchEvent('change')
 
   const passwordInput = page.locator(SELECTOR_PASSWORD).first()
   await passwordInput.click()
-  await page.waitForTimeout(400)
-  await passwordInput.pressSequentially(env.NOTE_PASSWORD, { delay: 40 })
+  await passwordInput.fill(env.NOTE_PASSWORD)
+  await passwordInput.dispatchEvent('input')
+  await passwordInput.dispatchEvent('change')
 
   // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
