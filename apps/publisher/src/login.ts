@@ -100,17 +100,10 @@ async function performLogin(page: Page): Promise<void> {
   // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
   await page.waitForSelector(`${SELECTOR_SUBMIT}:not([disabled])`, { timeout: 10_000 })
-  // waitForLoadState('networkidle') はページがすでに networkidle の場合に即解決してしまい
-  // クリック後のナビゲーションを取りこぼす。waitForURL で /login から外れるのを確実に待つ。
-  await Promise.all([
-    page.waitForURL((url) => !url.toString().includes('/login'), {
-      timeout: TIMEOUT_NAVIGATION,
-      waitUntil: 'domcontentloaded',
-    }),
-    page.click(`${SELECTOR_SUBMIT}:not([disabled])`),
-  ])
+  await page.click(`${SELECTOR_SUBMIT}:not([disabled])`)
 
-  // ログイン送信直後の画面をキャプチャ（セキュリティチャレンジ等の診断用）
+  // 送信直後の画面をキャプチャ（CAPTCHA・エラー・2FA など診断用）
+  await page.waitForTimeout(2_000)
   await captureLoginScreenshot(page, 'immediately after submit')
 
   log.info(
