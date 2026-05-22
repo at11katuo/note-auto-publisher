@@ -86,6 +86,7 @@ services:
     environment:
       DATABASE_URL: file:/app/data/prod.db
       PLAYWRIGHT_HEADLESS: "true"
+      RUNNING_IN_DOCKER: "true"
     volumes:
       - db_data:/app/data
       - auth_state:/app/apps/publisher/.auth

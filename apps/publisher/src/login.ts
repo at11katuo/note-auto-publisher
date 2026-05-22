@@ -1,12 +1,20 @@
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { ResultAsync } from 'neverthrow'
 import type { Page } from 'playwright'
 import { createLogger } from '@note/logger'
 import { parseEnv } from '@note/shared'
-import { saveStorageState } from './browser.js'
+import { AUTH_DIR, saveStorageState } from './browser.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const log = createLogger('publisher:login')
 
-const SCREENSHOT_PATH = '/app/data/error-screenshot.png'
+// Docker 内は /app/data/、ローカルは .auth/ 直下に保存する
+const SCREENSHOT_PATH =
+  process.env['RUNNING_IN_DOCKER'] === 'true'
+    ? '/app/data/error-screenshot.png'
+    : resolve(AUTH_DIR, 'error-screenshot.png')
 
 async function captureLoginScreenshot(page: Page, context: string): Promise<void> {
   try {
@@ -88,8 +96,13 @@ async function performLogin(page: Page): Promise<void> {
   // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
   await page.waitForSelector(`${SELECTOR_SUBMIT}:not([disabled])`, { timeout: 10_000 })
+  // waitForLoadState('networkidle') はページがすでに networkidle の場合に即解決してしまい
+  // クリック後のナビゲーションを取りこぼす。waitForURL で /login から外れるのを確実に待つ。
   await Promise.all([
-    page.waitForLoadState('networkidle', { timeout: TIMEOUT_NAVIGATION }),
+    page.waitForURL((url) => !url.toString().includes('/login'), {
+      timeout: TIMEOUT_NAVIGATION,
+      waitUntil: 'domcontentloaded',
+    }),
     page.click(`${SELECTOR_SUBMIT}:not([disabled])`),
   ])
 
