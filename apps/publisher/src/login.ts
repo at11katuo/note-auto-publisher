@@ -63,13 +63,21 @@ async function performLogin(page: Page): Promise<void> {
   })
 
   await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
-  await page.fill(SELECTOR_EMAIL, env.NOTE_EMAIL)
-  await page.fill(SELECTOR_PASSWORD, env.NOTE_PASSWORD)
 
+  // page.fill() は DOM 値を直接書き換えるだけで Vue.js の input イベントが発火しない。
+  // click → type でキーストロークを模倣し、フォームバリデーションを確実にトリガーする。
+  await page.click(SELECTOR_EMAIL)
+  await page.type(SELECTOR_EMAIL, env.NOTE_EMAIL, { delay: 50 })
+
+  await page.click(SELECTOR_PASSWORD)
+  await page.type(SELECTOR_PASSWORD, env.NOTE_PASSWORD, { delay: 50 })
+
+  // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
+  await page.waitForSelector(`${SELECTOR_SUBMIT}:not([disabled])`, { timeout: 10_000 })
   await Promise.all([
     page.waitForLoadState('networkidle', { timeout: TIMEOUT_NAVIGATION }),
-    page.click(SELECTOR_SUBMIT),
+    page.click(`${SELECTOR_SUBMIT}:not([disabled])`),
   ])
 
   log.info(
