@@ -85,19 +85,13 @@ async function performLogin(page: Page): Promise<void> {
 
   await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
 
-  // fill() で値を確実にセットしたうえで Vue.js の input/change イベントを手動発火する。
-  // pressSequentially は Windows 環境で先頭文字が落ちるケースがあるため使わない。
+  // Playwright の fill() は内部で input/change イベントを発火するため
+  // 手動 dispatchEvent は不要（二重発火で Vue が空値で上書きしてしまう）。
   const emailInput = page.locator(SELECTOR_EMAIL).first()
-  await emailInput.click()
   await emailInput.fill(env.NOTE_EMAIL)
-  await emailInput.dispatchEvent('input')
-  await emailInput.dispatchEvent('change')
 
   const passwordInput = page.locator(SELECTOR_PASSWORD).first()
-  await passwordInput.click()
   await passwordInput.fill(env.NOTE_PASSWORD)
-  await passwordInput.dispatchEvent('input')
-  await passwordInput.dispatchEvent('change')
 
   // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
