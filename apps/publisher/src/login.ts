@@ -83,33 +83,19 @@ async function performLogin(page: Page): Promise<void> {
     timeout: TIMEOUT_NAVIGATION,
   })
 
-  // Vue が完全に mount されるまで待つ
   await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
-  await page.waitForLoadState('networkidle', { timeout: TIMEOUT_NAVIGATION })
 
-  // fill() / pressSequentially はいずれも Vue の beforeinput ハンドラに干渉して
-  // フィールドがリセットされる。nativeSetter で DOM 値を直接書き込み、
-  // input イベントだけを発火して Vue v-model に最小限の通知を送る。
-  await page.evaluate(
-    ({ emailSel, passwordSel, email, password }) => {
-      function setNativeValue(selector: string, value: string): void {
-        const el = document.querySelector<HTMLInputElement>(selector)
-        if (!el) throw new Error(`not found: ${selector}`)
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-        if (setter) setter.call(el, value)
-        else el.value = value
-        el.dispatchEvent(new Event('input', { bubbles: true }))
-      }
-      setNativeValue(emailSel, email)
-      setNativeValue(passwordSel, password)
-    },
-    {
-      emailSel: 'input[type="email"], input[name="login"], input[id="email"]',
-      passwordSel: 'input[type="password"]',
-      email: env.NOTE_EMAIL,
-      password: env.NOTE_PASSWORD,
-    },
-  )
+  // keyboard.insertText() はブラウザネイティブのテキスト挿入パイプラインを通るため
+  // 文字落ちせず、Vue の input イベントも正しく発火する。
+  const emailInput = page.locator(SELECTOR_EMAIL).first()
+  await emailInput.click()
+  await page.waitForTimeout(500)
+  await page.keyboard.insertText(env.NOTE_EMAIL)
+
+  const passwordInput = page.locator(SELECTOR_PASSWORD).first()
+  await passwordInput.click()
+  await page.waitForTimeout(300)
+  await page.keyboard.insertText(env.NOTE_PASSWORD)
 
   // ボタンが enabled になるまで最大10秒待機してからクリック
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
