@@ -6,6 +6,19 @@ import { saveStorageState } from './browser.js'
 
 const log = createLogger('publisher:login')
 
+const SCREENSHOT_PATH = '/app/data/error-screenshot.png'
+
+async function captureLoginScreenshot(page: Page, context: string): Promise<void> {
+  try {
+    const url = page.url()
+    log.error({ context, url }, 'capturing login error screenshot')
+    await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true })
+    log.error({ path: SCREENSHOT_PATH, url }, 'screenshot saved — view at /api/screenshot')
+  } catch (e) {
+    log.warn({ err: e }, 'failed to capture login error screenshot')
+  }
+}
+
 const NOTE_ORIGIN = 'https://note.com'
 const LOGIN_URL = `${NOTE_ORIGIN}/login`
 const HOME_URL = `${NOTE_ORIGIN}/`
@@ -80,14 +93,22 @@ async function performLogin(page: Page): Promise<void> {
     page.click(`${SELECTOR_SUBMIT}:not([disabled])`),
   ])
 
+  // ログイン送信直後の画面をキャプチャ（セキュリティチャレンジ等の診断用）
+  await captureLoginScreenshot(page, 'immediately after submit')
+
   log.info(
     { timeoutMs: TIMEOUT_2FA_WAIT },
     'waiting for post-login state (manual 2FA accepted)',
   )
-  await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {
-    timeout: TIMEOUT_2FA_WAIT,
-    state: 'attached',
-  })
+  try {
+    await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {
+      timeout: TIMEOUT_2FA_WAIT,
+      state: 'attached',
+    })
+  } catch (e) {
+    await captureLoginScreenshot(page, 'post-login marker not found')
+    throw e
+  }
 
   log.info('login confirmed')
 }
