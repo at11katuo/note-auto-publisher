@@ -129,10 +129,18 @@ async function clickSaveDraft(page: Page): Promise<void> {
 }
 
 async function waitForSavedUrl(page: Page): Promise<string> {
-  // /notes/new から /notes/<id>/edit (または /notes/<id>) への遷移を待つ
+  // note.com は新エディタ (editor.note.com) に移行済み。
+  // 旧: note.com/notes/new → note.com/notes/<id>/edit
+  // 新: editor.note.com/new → editor.note.com/<id>
   await page.waitForFunction(
     () => {
+      const hostname = window.location.hostname
       const path = window.location.pathname
+      if (hostname === 'editor.note.com') {
+        // /new から別パスへ遷移すれば保存完了
+        return path !== '/new'
+      }
+      // 旧エディタパターン
       if (path.endsWith('/notes/new')) return false
       return /\/notes\/[A-Za-z0-9_-]+/.test(path)
     },
