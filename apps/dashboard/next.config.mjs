@@ -7,6 +7,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const nextConfig = {
   output: 'standalone',
   transpilePackages: ['@note/db', '@note/logger', '@note/prompts', '@note/shared'],
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      '.js': ['.ts', '.js'],
+    }
+    return config
+  },
   experimental: {
     // monorepo ルートからファイルトレースするために必要
     outputFileTracingRoot: path.join(__dirname, '../../'),
