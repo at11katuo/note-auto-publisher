@@ -34,7 +34,11 @@ const HOME_URL = `${NOTE_ORIGIN}/`
 const SELECTOR_EMAIL =
   'input[type="email"], input[name="login"], input[id="email"]'
 const SELECTOR_PASSWORD = 'input[type="password"]'
-const SELECTOR_SUBMIT = 'button:has-text("ログイン"), button[type="submit"]'
+// note.com のログインボタンは type="button"（type="submit" ではない）
+// カンマ区切りセレクタに :not([disabled]) を後付けすると最後の項にしか適用されないため
+// 各セレクタに :not([disabled]) を個別に付ける
+const SELECTOR_SUBMIT_ENABLED =
+  'button:has-text("ログイン"):not([disabled]), button[type="submit"]:not([disabled])'
 
 const SELECTOR_LOGGED_IN_MARKER =
   '[data-testid="header-account-menu"], a[href*="/notes/new"], button[aria-label*="アカウント"], img[alt*="プロフィール"]'
@@ -86,8 +90,14 @@ async function performLogin(page: Page): Promise<void> {
   await passwordInput.fill(env.NOTE_PASSWORD)
 
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
-  await page.waitForSelector(`${SELECTOR_SUBMIT}:not([disabled])`, { timeout: 10_000 })
-  await page.click(`${SELECTOR_SUBMIT}:not([disabled])`)
+  // ボタンが有効になるまで最大30秒待機。有効にならなければスクリーンショットを撮って失敗
+  try {
+    await page.waitForSelector(SELECTOR_SUBMIT_ENABLED, { timeout: 30_000 })
+  } catch (e) {
+    await captureLoginScreenshot(page, 'submit button never enabled — fill() may not have triggered Vue')
+    throw e
+  }
+  await page.click(SELECTOR_SUBMIT_ENABLED)
 
   await page.waitForTimeout(2_000)
   await captureLoginScreenshot(page, 'immediately after submit')
