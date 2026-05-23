@@ -63,12 +63,18 @@ importers:
 
   apps/dashboard:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.52.0
+        version: 0.52.0
       '@note/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@note/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@note/prompts':
+        specifier: workspace:*
+        version: link:../../packages/prompts
       '@note/shared':
         specifier: workspace:*
         version: link:../../packages/shared

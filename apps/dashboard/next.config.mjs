@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  transpilePackages: ['@note/db', '@note/logger', '@note/shared'],
+  transpilePackages: ['@note/db', '@note/logger', '@note/prompts', '@note/shared'],
   experimental: {
     // monorepo ルートからファイルトレースするために必要
     outputFileTracingRoot: path.join(__dirname, '../../'),
