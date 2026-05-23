@@ -10,14 +10,16 @@ jobs:
       - name: Upload note.json session to VPS
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             echo "${{ secrets.NOTE_SESSION_B64 }}" | base64 -d > /tmp/note.json
-            docker compose -f /home/deploy/note-auto-publisher/docker-compose.yml run --rm \
+            cd ${{ secrets.DEPLOY_PATH }}
+            docker compose run --rm \
               -v /tmp/note.json:/tmp/note.json \
               publisher sh -c 'mkdir -p /app/apps/publisher/.auth && cp /tmp/note.json /app/apps/publisher/.auth/note.json && echo "session uploaded"'
             rm -f /tmp/note.json
-            docker compose -f /home/deploy/note-auto-publisher/docker-compose.yml restart publisher
+            docker compose restart publisher
             echo "done"
