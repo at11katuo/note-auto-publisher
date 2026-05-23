@@ -28,8 +28,8 @@ model Idea {
 
 model Draft {
   id            String    @id @default(cuid())
-  ideaId        String
-  idea          Idea      @relation(fields: [ideaId], references: [id])
+  ideaId        String?
+  idea          Idea?     @relation(fields: [ideaId], references: [id])
   title         String
   body          String    // markdown
   tags          String    // JSON配列
