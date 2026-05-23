@@ -1,4 +1,5 @@
 export { SYSTEM_PROMPT } from './system.js'
 export { buildArticlePrompt } from './article-prompt.js'
+export { buildPurchasePrompt, type PurchaseInput } from './purchase-prompt.js'
 export { DISCLAIMER } from './disclaimer.js'
 export { PROMPT_VERSION } from './version.js'

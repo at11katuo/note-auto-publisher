@@ -8,6 +8,7 @@ const links = [
   { href: '/', label: 'ダッシュボード' },
   { href: '/ideas', label: 'ネタ一覧' },
   { href: '/drafts', label: '下書き一覧' },
+  { href: '/purchase', label: '購入報告' },
 ];
 
 export function Nav() {

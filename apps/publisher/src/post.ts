@@ -54,10 +54,11 @@ function parseMarkdown(body: string): Block[] {
   for (const raw of lines) {
     const line = raw.trim()
     if (line.length === 0) continue
+    // ## / # はプレーンテキストとして扱う（editor.note.com ではショートカットが機能しない）
     if (line.startsWith('## ')) {
-      blocks.push({ kind: 'h2', text: line.slice(3).trim() })
+      blocks.push({ kind: 'p', text: line.slice(3).trim() })
     } else if (line.startsWith('# ')) {
-      blocks.push({ kind: 'h2', text: line.slice(2).trim() })
+      blocks.push({ kind: 'p', text: line.slice(2).trim() })
     } else {
       blocks.push({ kind: 'p', text: line })
     }

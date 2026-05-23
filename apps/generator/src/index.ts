@@ -5,10 +5,10 @@ import { notifyDiscord } from './notify.js'
 
 const logger = createLogger('generator')
 
-/** 1サイクルで生成する最大件数 */
-const DAEMON_BATCH_SIZE = 3
-/** 次のサイクルまでの待機時間 (ms) */
-const DAEMON_INTERVAL_MS = 30 * 60 * 1000
+/** 1サイクルで生成する最大件数（量より質で1件ずつ） */
+const DAEMON_BATCH_SIZE = 1
+/** 次のサイクルまでの待機時間: 24時間 */
+const DAEMON_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 const args = process.argv.slice(2)
 const ideaIdIdx = args.indexOf('--idea-id')
