@@ -38,7 +38,9 @@ async function runLoginOnly(): Promise<number> {
     log.warn({ err: e }, 'could not clear session file (may not exist)')
   }
 
-  const launched = await launchBrowser({ headless: process.env['PLAYWRIGHT_HEADLESS'] !== 'false' })
+  // login-only はローカルで手動 CAPTCHA を突破するため headless: false がデフォルト。
+  // サーバー上で強制ヘッドレスにしたい場合は PLAYWRIGHT_HEADLESS=true を明示する。
+  const launched = await launchBrowser({ headless: process.env['PLAYWRIGHT_HEADLESS'] === 'true' })
   if (launched.isErr()) {
     log.error({ err: launched.error }, 'browser launch failed')
     return 1

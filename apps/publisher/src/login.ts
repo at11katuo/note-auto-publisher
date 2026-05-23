@@ -1,10 +1,31 @@
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { ResultAsync } from 'neverthrow'
 import type { Page } from 'playwright'
 import { createLogger } from '@note/logger'
 import { parseEnv } from '@note/shared'
-import { saveStorageState } from './browser.js'
+import { AUTH_DIR, saveStorageState } from './browser.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const log = createLogger('publisher:login')
+
+// Docker 内は /app/data/、ローカルは .auth/ 直下に保存する
+const SCREENSHOT_PATH =
+  process.env['RUNNING_IN_DOCKER'] === 'true'
+    ? '/app/data/error-screenshot.png'
+    : resolve(AUTH_DIR, 'error-screenshot.png')
+
+async function captureLoginScreenshot(page: Page, context: string): Promise<void> {
+  try {
+    const url = page.url()
+    log.error({ context, url }, 'capturing login error screenshot')
+    await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true })
+    log.error({ path: SCREENSHOT_PATH, url }, 'screenshot saved — view at /api/screenshot')
+  } catch (e) {
+    log.warn({ err: e }, 'failed to capture login error screenshot')
+  }
+}
 
 const NOTE_ORIGIN = 'https://note.com'
 const LOGIN_URL = `${NOTE_ORIGIN}/login`
@@ -54,40 +75,30 @@ async function isLoggedIn(page: Page): Promise<boolean> {
 }
 
 async function performLogin(page: Page): Promise<void> {
-  const env = parseEnv()
-
   log.info('navigating to login page')
   await page.goto(LOGIN_URL, {
     waitUntil: 'domcontentloaded',
     timeout: TIMEOUT_NAVIGATION,
   })
 
-  await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
-
-  // page.fill() は DOM 値を直接書き換えるだけで Vue.js の input イベントが発火しない。
-  // click → type でキーストロークを模倣し、フォームバリデーションを確実にトリガーする。
-  await page.click(SELECTOR_EMAIL)
-  await page.type(SELECTOR_EMAIL, env.NOTE_EMAIL, { delay: 50 })
-
-  await page.click(SELECTOR_PASSWORD)
-  await page.type(SELECTOR_PASSWORD, env.NOTE_PASSWORD, { delay: 50 })
-
-  // ボタンが enabled になるまで最大10秒待機してからクリック
-  log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
-  await page.waitForSelector(`${SELECTOR_SUBMIT}:not([disabled])`, { timeout: 10_000 })
-  await Promise.all([
-    page.waitForLoadState('networkidle', { timeout: TIMEOUT_NAVIGATION }),
-    page.click(`${SELECTOR_SUBMIT}:not([disabled])`),
-  ])
+  // note.com のアンチボット機構がプログラム入力を検知してフィールドをリセットするため、
+  // 自動入力は行わずブラウザ画面を表示してユーザーに手動ログインを依頼する。
+  log.info('=== ブラウザが開きました。メアドとパスワードを手動で入力してログインしてください ===')
+  log.info({ timeoutMs: TIMEOUT_2FA_WAIT }, 'ログイン完了を待機中...')
 
   log.info(
     { timeoutMs: TIMEOUT_2FA_WAIT },
     'waiting for post-login state (manual 2FA accepted)',
   )
-  await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {
-    timeout: TIMEOUT_2FA_WAIT,
-    state: 'attached',
-  })
+  try {
+    await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {
+      timeout: TIMEOUT_2FA_WAIT,
+      state: 'attached',
+    })
+  } catch (e) {
+    await captureLoginScreenshot(page, 'post-login marker not found')
+    throw e
+  }
 
   log.info('login confirmed')
 }

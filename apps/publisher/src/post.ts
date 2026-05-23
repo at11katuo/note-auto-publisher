@@ -1,6 +1,8 @@
 import { ResultAsync } from 'neverthrow'
 import type { Page } from 'playwright'
 import { createLogger } from '@note/logger'
+import { AUTH_DIR } from './browser.js'
+import { resolve } from 'node:path'
 
 const log = createLogger('publisher:post')
 
@@ -139,7 +141,10 @@ async function waitForSavedUrl(page: Page): Promise<string> {
   return page.url()
 }
 
-const SCREENSHOT_PATH = '/app/data/error-screenshot.png'
+const SCREENSHOT_PATH =
+  process.env['RUNNING_IN_DOCKER'] === 'true'
+    ? '/app/data/error-screenshot.png'
+    : resolve(AUTH_DIR, 'error-screenshot.png')
 
 async function captureErrorScreenshot(page: Page, context: string): Promise<void> {
   try {
