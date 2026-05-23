@@ -75,36 +75,16 @@ async function isLoggedIn(page: Page): Promise<boolean> {
 }
 
 async function performLogin(page: Page): Promise<void> {
-  const env = parseEnv()
-
   log.info('navigating to login page')
   await page.goto(LOGIN_URL, {
     waitUntil: 'domcontentloaded',
     timeout: TIMEOUT_NAVIGATION,
   })
 
-  await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
-
-  // keyboard.insertText() はブラウザネイティブのテキスト挿入パイプラインを通るため
-  // 文字落ちせず、Vue の input イベントも正しく発火する。
-  const emailInput = page.locator(SELECTOR_EMAIL).first()
-  await emailInput.click()
-  await page.waitForTimeout(500)
-  await page.keyboard.insertText(env.NOTE_EMAIL)
-
-  const passwordInput = page.locator(SELECTOR_PASSWORD).first()
-  await passwordInput.click()
-  await page.waitForTimeout(300)
-  await page.keyboard.insertText(env.NOTE_PASSWORD)
-
-  // ボタンが enabled になるまで最大10秒待機してからクリック
-  log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
-  await page.waitForSelector(`${SELECTOR_SUBMIT}:not([disabled])`, { timeout: 10_000 })
-  await page.click(`${SELECTOR_SUBMIT}:not([disabled])`)
-
-  // 送信直後の画面をキャプチャ（CAPTCHA・エラー・2FA など診断用）
-  await page.waitForTimeout(2_000)
-  await captureLoginScreenshot(page, 'immediately after submit')
+  // note.com のアンチボット機構がプログラム入力を検知してフィールドをリセットするため、
+  // 自動入力は行わずブラウザ画面を表示してユーザーに手動ログインを依頼する。
+  log.info('=== ブラウザが開きました。メアドとパスワードを手動で入力してログインしてください ===')
+  log.info({ timeoutMs: TIMEOUT_2FA_WAIT }, 'ログイン完了を待機中...')
 
   log.info(
     { timeoutMs: TIMEOUT_2FA_WAIT },
