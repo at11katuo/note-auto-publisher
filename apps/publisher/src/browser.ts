@@ -52,7 +52,8 @@ export function hasStoredSession(): boolean {
 export function launchBrowser(
   options: LaunchOptions = {},
 ): ResultAsync<BrowserSession, BrowserError> {
-  const { headless = process.env['PLAYWRIGHT_HEADLESS'] !== 'false', slowMo = 100 } = options
+  // PLAYWRIGHT_HEADLESS=false または HEADLESS=false のどちらかで画面表示になる
+  const { headless = process.env['PLAYWRIGHT_HEADLESS'] !== 'false' && process.env['HEADLESS'] !== 'false', slowMo = 100 } = options
 
   return ResultAsync.fromPromise(
     (async () => {
