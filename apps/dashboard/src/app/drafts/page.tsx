@@ -64,9 +64,11 @@ export default async function DraftsPage() {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-xs text-gray-500 truncate">
-                    ネタ: {draft.idea.title}
-                  </p>
+                  {draft.idea && (
+                    <p className="mt-1 text-xs text-gray-500 truncate">
+                      ネタ: {draft.idea.title}
+                    </p>
+                  )}
 
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                     <span>{draft.charCount.toLocaleString()} 字</span>
