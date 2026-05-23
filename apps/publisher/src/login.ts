@@ -55,19 +55,13 @@ export class LoginError extends Error {
 
 async function isLoggedIn(page: Page): Promise<boolean> {
   try {
-    await page.goto(HOME_URL, {
+    // ホームページは未ログインでも表示されるため /notes/new で確認する。
+    // 未ログインなら必ず /login にリダイレクトされる。
+    await page.goto('https://note.com/notes/new', {
       waitUntil: 'domcontentloaded',
       timeout: TIMEOUT_NAVIGATION,
     })
     const currentUrl = page.url()
-    // ログインページにリダイレクトされたら未ログイン確定
-    if (currentUrl.includes('/login') || currentUrl.includes('/signup')) {
-      return false
-    }
-    // URL がホームのままならセッション有効とみなす（セレクタより信頼性が高い）
-    const marker = await page.$(SELECTOR_LOGGED_IN_MARKER)
-    if (marker) return true
-    // セレクタが見つからなくても /login にいなければセッションは有効と判断
     return !currentUrl.includes('/login')
   } catch {
     return false
