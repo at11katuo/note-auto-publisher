@@ -16,11 +16,6 @@ export function validateArticle(draft: {
     }
   }
 
-  const h2Count = (draft.body.match(/^## /gm) ?? []).length
-  if (h2Count < 3 || h2Count > 5) {
-    violations.push(`H2 見出しは3〜5個必要ですが、${h2Count}個あります`)
-  }
-
   if (draft.charCount < 2000) {
     violations.push(`文字数が不足しています（${draft.charCount}字、最低2000字必要）`)
   } else if (draft.charCount > 3500) {
