@@ -1,7 +1,8 @@
 import { ResultAsync } from 'neverthrow'
 import type { Page } from 'playwright'
 import { createLogger } from '@note/logger'
-import { AUTH_DIR } from './browser.js'
+import { AUTH_DIR, saveStorageState } from './browser.js'
+import { ensureLoggedIn } from './login.js'
 import { resolve } from 'node:path'
 
 const log = createLogger('publisher:post')
@@ -172,6 +173,22 @@ export function createDraftOnNote(
         waitUntil: 'domcontentloaded',
         timeout: TIMEOUT_NAVIGATION,
       })
+
+      // /login にリダイレクトされた場合はセッション切れ → 再ログインしてリトライ
+      if (page.url().includes('/login')) {
+        log.warn({ url: page.url() }, 'redirected to /login — session expired, re-logging in')
+        const loginResult = await ensureLoggedIn(page)
+        if (loginResult.isErr()) {
+          throw new PostError('fallback re-login failed', loginResult.error)
+        }
+        const saved = await saveStorageState(page.context())
+        if (saved.isErr()) log.warn({ err: saved.error }, 'failed to save session after re-login')
+        await page.goto(NOTE_NEW_URL, {
+          waitUntil: 'domcontentloaded',
+          timeout: TIMEOUT_NAVIGATION,
+        })
+      }
+
       log.info({ url: page.url() }, 'navigated to notes/new')
 
       await fillTitle(page, draft.title).catch(async (e: unknown) => {

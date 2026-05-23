@@ -75,20 +75,32 @@ async function isLoggedIn(page: Page): Promise<boolean> {
 }
 
 async function performLogin(page: Page): Promise<void> {
+  const env = parseEnv()
+
   log.info('navigating to login page')
   await page.goto(LOGIN_URL, {
     waitUntil: 'domcontentloaded',
     timeout: TIMEOUT_NAVIGATION,
   })
 
-  // note.com のアンチボット機構がプログラム入力を検知してフィールドをリセットするため、
-  // 自動入力は行わずブラウザ画面を表示してユーザーに手動ログインを依頼する。
-  log.info('=== ブラウザが開きました。メアドとパスワードを手動で入力してログインしてください ===')
-  log.info({ timeoutMs: TIMEOUT_2FA_WAIT }, 'ログイン完了を待機中...')
+  await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
+
+  // stealth プラグインで bot 検知を回避済みなので fill() で自動入力する
+  const emailInput = page.locator(SELECTOR_EMAIL).first()
+  await emailInput.fill(env.NOTE_EMAIL)
+  const passwordInput = page.locator(SELECTOR_PASSWORD).first()
+  await passwordInput.fill(env.NOTE_PASSWORD)
+
+  log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
+  await page.waitForSelector(`${SELECTOR_SUBMIT}:not([disabled])`, { timeout: 10_000 })
+  await page.click(`${SELECTOR_SUBMIT}:not([disabled])`)
+
+  await page.waitForTimeout(2_000)
+  await captureLoginScreenshot(page, 'immediately after submit')
 
   log.info(
     { timeoutMs: TIMEOUT_2FA_WAIT },
-    'waiting for post-login state (manual 2FA accepted)',
+    'waiting for post-login state (CAPTCHA/2FA may require manual action)',
   )
   try {
     await page.waitForSelector(SELECTOR_LOGGED_IN_MARKER, {

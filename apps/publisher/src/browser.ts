@@ -2,13 +2,13 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ResultAsync } from 'neverthrow'
-import {
-  chromium,
-  type Browser,
-  type BrowserContext,
-  type Page,
-} from 'playwright'
+import { chromium } from 'playwright-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+import type { Browser, BrowserContext, Page } from 'playwright'
 import { createLogger } from '@note/logger'
+
+// ステルスプラグインで navigator.webdriver などのボット検知フラグを無効化
+chromium.use(StealthPlugin())
 
 const log = createLogger('publisher:browser')
 
