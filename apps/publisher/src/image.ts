@@ -1,12 +1,12 @@
 import { writeFile, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI, Modality } from '@google/genai'
 import { createLogger } from '@note/logger'
 
 const log = createLogger('publisher:image')
 
-const MODEL = 'gemini-2.0-flash-exp'
+const MODEL = 'gemini-2.0-flash-preview-image-generation'
 
 function buildPrompt(title: string): string {
   const t = title.toLowerCase()
@@ -60,20 +60,6 @@ function buildPrompt(title: string): string {
   )
 }
 
-type InlineDataPart = {
-  inlineData: { mimeType: string; data: string }
-}
-
-function isInlineDataPart(part: unknown): part is InlineDataPart {
-  return (
-    typeof part === 'object' &&
-    part !== null &&
-    'inlineData' in part &&
-    typeof (part as InlineDataPart).inlineData?.mimeType === 'string' &&
-    typeof (part as InlineDataPart).inlineData?.data === 'string'
-  )
-}
-
 export async function generateEyecatch(title: string): Promise<string | null> {
   const apiKey = process.env['GEMINI_API_KEY']
   if (!apiKey) {
@@ -82,23 +68,23 @@ export async function generateEyecatch(title: string): Promise<string | null> {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: MODEL })
+    const ai = new GoogleGenAI({ apiKey })
 
     const prompt = buildPrompt(title)
     log.info({ model: MODEL, titleSnippet: title.slice(0, 40) }, 'generating eyecatch image')
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      // responseModalities is not yet typed in @google/generative-ai v0.21 but supported at runtime
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        responseModalities: [Modality.IMAGE, Modality.TEXT],
+      },
     })
 
-    const parts: unknown[] = result.response.candidates?.[0]?.content?.parts ?? []
+    const parts = response.candidates?.[0]?.content?.parts ?? []
 
     for (const part of parts) {
-      if (isInlineDataPart(part) && part.inlineData.mimeType.startsWith('image/')) {
+      if (part.inlineData?.mimeType?.startsWith('image/') && part.inlineData.data) {
         const ext = part.inlineData.mimeType === 'image/png' ? 'png' : 'jpg'
         const imagePath = join(tmpdir(), `eyecatch-${Date.now()}.${ext}`)
         await writeFile(imagePath, Buffer.from(part.inlineData.data, 'base64'))
