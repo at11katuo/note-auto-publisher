@@ -24,10 +24,23 @@ const SELECTOR_TAG_INPUT =
 const SELECTOR_SAVE_DRAFT =
   'button:has-text("下書き保存"), button[aria-label*="下書き保存"], [data-testid="save-draft-button"]'
 
+// Eyecatch (thumbnail) upload button — note.com uses several selectors across editor versions
+const SELECTORS_EYECATCH_BUTTON = [
+  'button:has-text("サムネイル")',
+  'button:has-text("アイキャッチ")',
+  '[data-testid*="thumbnail"]',
+  '[data-testid*="eyecatch"]',
+  'button[aria-label*="サムネイル"]',
+  'button[aria-label*="アイキャッチ"]',
+  'label[aria-label*="サムネイル"]',
+  'label[aria-label*="アイキャッチ"]',
+]
+
 export type DraftPayload = {
   title: string
   body: string
   tags: string[]
+  eyecatchPath?: string | null
 }
 
 export type PostResult = {
@@ -64,6 +77,33 @@ function parseMarkdown(body: string): Block[] {
     }
   }
   return blocks
+}
+
+async function uploadEyecatch(page: Page, imagePath: string): Promise<void> {
+  // Try each selector until one matches
+  let triggerEl: import('playwright').ElementHandle | null = null
+  for (const selector of SELECTORS_EYECATCH_BUTTON) {
+    triggerEl = await page.$(selector)
+    if (triggerEl) {
+      log.info({ selector }, 'found eyecatch button')
+      break
+    }
+  }
+
+  if (!triggerEl) {
+    log.warn('eyecatch button not found — skipping thumbnail upload')
+    return
+  }
+
+  // Wait for the file chooser that the button triggers, then set the image file
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent('filechooser', { timeout: 10_000 }),
+    triggerEl.click(),
+  ])
+  await fileChooser.setFiles(imagePath)
+  // Give note.com time to upload and process the image
+  await page.waitForTimeout(3_000)
+  log.info({ imagePath }, 'eyecatch image uploaded')
 }
 
 async function fillTitle(page: Page, title: string): Promise<void> {
@@ -198,6 +238,12 @@ export function createDraftOnNote(
       }
 
       log.info({ url: page.url() }, 'navigated to notes/new')
+
+      if (draft.eyecatchPath) {
+        await uploadEyecatch(page, draft.eyecatchPath).catch((e: unknown) => {
+          log.warn({ err: e }, 'eyecatch upload threw unexpectedly — continuing without thumbnail')
+        })
+      }
 
       await fillTitle(page, draft.title).catch(async (e: unknown) => {
         await captureErrorScreenshot(page, 'fillTitle failed')

@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@note/db": "workspace:*",
     "@note/logger": "workspace:*",
     "@note/shared": "workspace:*",

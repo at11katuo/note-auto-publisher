@@ -4,6 +4,7 @@ import { createLogger } from '@note/logger'
 import { prisma } from '@note/db'
 import { closeBrowser, launchBrowser, STORAGE_STATE_PATH, type BrowserSession } from './browser.js'
 import { ensureLoggedIn, forceLogin } from './login.js'
+import { generateEyecatch, cleanupEyecatch } from './image.js'
 import { createDraftOnNote } from './post.js'
 
 const log = createLogger('publisher:cli')
@@ -81,6 +82,7 @@ async function runPublishDraft(draftId: string): Promise<number> {
     return 1
   }
   const session = launched.value
+  let eyecatchPath: string | null = null
 
   try {
     const loginRes = await ensureLoggedIn(session.page)
@@ -104,11 +106,15 @@ async function runPublishDraft(draftId: string): Promise<number> {
       data: { draftId, action: 'submitted', detail: null },
     })
 
+    // Generate eyecatch image (gracefully degrades to null on any failure)
+    eyecatchPath = await generateEyecatch(draft.title)
+
     const tags = parseTags(draft.tags)
     const postRes = await createDraftOnNote(session.page, {
       title: draft.title,
       body: draft.body,
       tags,
+      eyecatchPath,
     })
 
     if (postRes.isErr()) {
@@ -142,6 +148,7 @@ async function runPublishDraft(draftId: string): Promise<number> {
     log.info({ draftId, noteUrl }, 'draft published')
     return 0
   } finally {
+    await cleanupEyecatch(eyecatchPath)
     await safeCloseBrowser(session)
     await prisma.$disconnect().catch(() => undefined)
   }
