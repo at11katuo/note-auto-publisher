@@ -19,7 +19,7 @@ const batchSize = batchIdx !== -1 ? parseInt(args[batchIdx + 1] ?? '1', 10) : nu
 
 async function processBatch(size: number): Promise<{ success: number; fail: number }> {
   const ideas = await prisma.idea.findMany({
-    where: { status: 'new' },
+    where: { status: 'new', deletedAt: null },
     orderBy: { collectedAt: 'desc' },
     take: size,
   })

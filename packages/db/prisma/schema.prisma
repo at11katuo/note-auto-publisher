@@ -19,6 +19,7 @@ model Idea {
   status      String    @default("new") // "new" | "used" | "skipped"
   collectedAt DateTime  @default(now())
   usedAt      DateTime?
+  deletedAt   DateTime?
 
   drafts Draft[]
 
@@ -41,6 +42,7 @@ model Draft {
   rejectReason  String?
   llmModel      String    // "claude-sonnet-4-5" など
   promptVersion String    // "v1.0" など、プロンプトのバージョン管理用
+  deletedAt     DateTime?
 
   @@index([status, generatedAt])
 }

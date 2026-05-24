@@ -5,6 +5,7 @@ import { collectFromTavily } from './sources/tavily.js'
 import { filterDuplicates } from './dedupe.js'
 import { saveIdeas } from './save.js'
 import { notifyDiscord } from './notify.js'
+import { runCleanup } from './cleanup.js'
 import type { RawIdea } from './types.js'
 
 const logger = createLogger('collector')
@@ -85,6 +86,13 @@ async function runCycle(): Promise<void> {
 
   logger.info({ saved: saveResult.value }, 'Collection cycle complete')
   await notifyDiscord(`✅ ${saveResult.value} 件の新しいネタを収集しました`)
+
+  // クリーンアップ: 古いアイテムをゴミ箱へ移動 / 完全削除
+  try {
+    await runCleanup(logger)
+  } catch (e) {
+    logger.error({ error: String(e) }, 'Cleanup error')
+  }
 }
 
 async function main(): Promise<void> {

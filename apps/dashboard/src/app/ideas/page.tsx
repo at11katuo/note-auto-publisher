@@ -22,6 +22,7 @@ const SOURCE_LABEL: Record<string, string> = {
 
 export default async function IdeasPage() {
   const ideas = await prisma.idea.findMany({
+    where: { deletedAt: null },
     orderBy: { collectedAt: 'desc' },
     take: 100,
     select: {

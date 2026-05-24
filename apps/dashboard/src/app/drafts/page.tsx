@@ -19,6 +19,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default async function DraftsPage() {
   const drafts = await prisma.draft.findMany({
+    where: { deletedAt: null },
     orderBy: { generatedAt: 'desc' },
     take: 100,
     select: {
