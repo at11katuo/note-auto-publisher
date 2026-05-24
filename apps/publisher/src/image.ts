@@ -6,7 +6,10 @@ import { createLogger } from '@note/logger'
 
 const log = createLogger('publisher:image')
 
-const MODEL = 'gemini-2.0-flash-preview-image-generation'
+// Image generation requires v1alpha endpoint; gemini-2.0-flash-exp is the free-tier model
+// that supports responseModalities IMAGE. Both "preview-image-generation" variants return
+// 404 on v1beta — we must pin apiVersion to v1alpha.
+const MODEL = 'gemini-2.0-flash-exp'
 
 function buildPrompt(title: string): string {
   const t = title.toLowerCase()
@@ -68,7 +71,8 @@ export async function generateEyecatch(title: string): Promise<string | null> {
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey })
+    // v1alpha is required for image generation; v1beta returns 404 for this model
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1alpha' } })
 
     const prompt = buildPrompt(title)
     log.info({ model: MODEL, titleSnippet: title.slice(0, 40) }, 'generating eyecatch image')

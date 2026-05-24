@@ -131,6 +131,9 @@ async function fillBody(page: Page, body: string): Promise<void> {
       await page.keyboard.type(block.text, { delay: 5 })
     }
     if (i < blocks.length - 1) {
+      // 段落間に2行分の空白を入れる（Enter3回 = 現段落終了 + 空行2行）
+      await page.keyboard.press('Enter')
+      await page.keyboard.press('Enter')
       await page.keyboard.press('Enter')
     }
   }
