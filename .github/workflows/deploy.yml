@@ -26,11 +26,6 @@ jobs:
             echo "==> git pull"
             git pull origin main
 
-            echo "==> clear stale note session"
-            sudo rm -rf apps/publisher/.auth/note.json 2>/dev/null || true
-            sudo rm -rf .auth/note.json 2>/dev/null || true
-            sudo rm -rf /var/lib/docker/volumes/note-auto-publisher_auth_state/_data/note.json 2>/dev/null || true
-
             echo "==> write .env from GitHub Secrets"
             printf 'DATABASE_URL=file:/app/data/prod.db\nNODE_ENV=production\nLOG_LEVEL=info\n' > .env
             echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
@@ -57,14 +52,8 @@ jobs:
             echo "==> fix database permissions"
             docker compose run --rm --user root migrate chmod -R 777 /app/data
 
-            echo "==> clear stale session to force clean login"
-            docker compose run --rm publisher rm -rf /app/apps/publisher/.auth/note.json 2>/dev/null || true
-
             echo "==> launch services (including background publisher)"
             docker compose up -d
-
-            echo "==> note login (stored session を再利用、無ければ自動ログイン)"
-            docker compose run --rm -e NOTE_EMAIL="${{ secrets.NOTE_EMAIL }}" -e NOTE_PASSWORD="${{ secrets.NOTE_PASSWORD }}" -e RUNNING_IN_DOCKER=true publisher pnpm --filter @note/publisher login || true
 
             echo "==> wait for stability"
             sleep 5

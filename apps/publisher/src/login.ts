@@ -83,18 +83,22 @@ async function performLogin(page: Page): Promise<void> {
 
   await page.waitForSelector(SELECTOR_EMAIL, { timeout: 30_000 })
 
-  // stealth プラグインで bot 検知を回避済みなので fill() で自動入力する
+  // pressSequentially で keydown/keypress/keyup を含む全イベントを発火させる。
+  // fill() は input イベントのみのため Vue の v-model が反応しないことがある。
   const emailInput = page.locator(SELECTOR_EMAIL).first()
-  await emailInput.fill(env.NOTE_EMAIL)
+  await emailInput.click()
+  await emailInput.pressSequentially(env.NOTE_EMAIL, { delay: 40 })
+
   const passwordInput = page.locator(SELECTOR_PASSWORD).first()
-  await passwordInput.fill(env.NOTE_PASSWORD)
+  await passwordInput.click()
+  await passwordInput.pressSequentially(env.NOTE_PASSWORD, { delay: 40 })
 
   log.info({ email: env.NOTE_EMAIL }, 'submitting credentials')
   // ボタンが有効になるまで最大30秒待機。有効にならなければスクリーンショットを撮って失敗
   try {
     await page.waitForSelector(SELECTOR_SUBMIT_ENABLED, { timeout: 30_000 })
   } catch (e) {
-    await captureLoginScreenshot(page, 'submit button never enabled — fill() may not have triggered Vue')
+    await captureLoginScreenshot(page, 'submit button never enabled — pressSequentially may not have triggered Vue')
     throw e
   }
   await page.click(SELECTOR_SUBMIT_ENABLED)
