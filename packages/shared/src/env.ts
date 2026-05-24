@@ -9,6 +9,7 @@ const envSchema = z.object({
   DASHBOARD_BASIC_PASS: z.string().min(1),
   DISCORD_WEBHOOK_URL: z.string().url().optional().or(z.literal('')),
   X_BEARER_TOKEN: z.string().optional(),
+  TAVILY_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z
     .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])

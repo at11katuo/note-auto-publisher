@@ -12,6 +12,7 @@
     "@note/db": "workspace:*",
     "@note/logger": "workspace:*",
     "@note/shared": "workspace:*",
+    "@tavily/core": "^0.7.3",
     "rss-parser": "^3.13.0",
     "string-similarity": "^4.0.4"
   },

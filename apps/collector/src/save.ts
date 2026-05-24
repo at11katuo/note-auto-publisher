@@ -34,7 +34,7 @@ export async function saveIdeas(
       const searchText = `${idea.title} ${idea.summary}`
       await prisma.idea.create({
         data: {
-          source: idea.source,
+          source: idea.source as string,
           sourceUrl: idea.sourceUrl ?? null,
           title: idea.title,
           summary: idea.summary,

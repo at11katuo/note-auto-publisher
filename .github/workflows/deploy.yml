@@ -40,6 +40,7 @@ jobs:
             echo "DASHBOARD_BASIC_PASS=${{ secrets.DASHBOARD_BASIC_PASS }}" >> .env
             echo "DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_WEBHOOK_URL }}" >> .env
             echo "X_BEARER_TOKEN=${{ secrets.X_BEARER_TOKEN }}" >> .env
+            echo "TAVILY_API_KEY=${{ secrets.TAVILY_API_KEY }}" >> .env
 
             echo "==> docker compose build"
             docker compose build

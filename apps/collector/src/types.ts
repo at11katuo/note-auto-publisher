@@ -1,5 +1,5 @@
 export type RawIdea = {
-  source: 'rss' | 'x'
+  source: 'rss' | 'x' | 'tavily'
   sourceUrl?: string
   title: string
   summary: string

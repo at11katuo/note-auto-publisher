@@ -47,6 +47,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: file:/app/data/prod.db
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
     volumes:
       - db_data:/app/data
     restart: unless-stopped
