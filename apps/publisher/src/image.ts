@@ -1,104 +1,87 @@
 import { writeFile, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { GoogleGenAI, Modality } from '@google/genai'
 import { createLogger } from '@note/logger'
 
 const log = createLogger('publisher:image')
 
-// Image generation requires v1alpha endpoint; gemini-2.0-flash-exp is the free-tier model
-// that supports responseModalities IMAGE. Both "preview-image-generation" variants return
-// 404 on v1beta — we must pin apiVersion to v1alpha.
-const MODEL = 'gemini-2.0-flash-exp'
+// Pollinations.ai — free, no API key, uses Flux model (open-source SDXL variant)
+const POLLINATIONS_BASE = 'https://image.pollinations.ai/prompt'
+const IMAGE_WIDTH = 1200
+const IMAGE_HEIGHT = 630
+const TIMEOUT_MS = 60_000
 
 function buildPrompt(title: string): string {
   const t = title.toLowerCase()
 
   if (/eth|ethereum|bitcoin|btc|crypto|defi|blockchain|仮想通貨|暗号/.test(t)) {
     return (
-      'A sleek modern digital artwork showing interconnected glowing blue and gold nodes ' +
-      'forming a blockchain network on a deep dark background. Abstract geometric shapes, ' +
-      'futuristic technology aesthetic, high contrast, vibrant colors, no text, ' +
-      'professional financial illustration, wide landscape format.'
+      'interconnected glowing blue and gold nodes forming a blockchain network, ' +
+      'deep dark background, abstract geometric shapes, futuristic fintech aesthetic, ' +
+      'high contrast, vibrant colors, no text, no letters, professional financial illustration'
     )
   }
   if (/nisa|オルカン|all.country|index|インデックス|投資信託|emax/.test(t)) {
     return (
-      'A minimalist illustration of a steadily rising investment chart with warm golden tones, ' +
-      'green upward arrows, and abstract growing plants symbolizing long-term wealth. ' +
-      'Clean white background, professional financial concept art, no text, ' +
-      'optimistic and trustworthy mood, wide landscape format.'
+      'steadily rising investment chart, warm golden tones, green upward arrow, ' +
+      'abstract growing plant symbolizing long-term wealth, clean white background, ' +
+      'professional financial concept art, no text, no letters, optimistic mood'
     )
   }
   if (/fire|早期退職|副業|マイクロ法人|週3|自由/.test(t)) {
     return (
-      'A serene lifestyle illustration of a silhouetted person sitting on a mountain peak ' +
-      'at sunrise with a laptop, representing financial independence and early retirement. ' +
-      'Soft pastel gradient sky, minimal style, peaceful and free atmosphere, ' +
-      'no text, inspirational concept art, wide landscape format.'
+      'silhouetted person relaxing on a mountain peak at sunrise, laptop open, ' +
+      'representing financial freedom and early retirement, soft pastel gradient sky, ' +
+      'minimal style, peaceful atmosphere, no text, no letters, inspirational'
     )
   }
   if (/frb|fed|金利|米国|市場|株式|dow|nasdaq/.test(t)) {
     return (
-      'A sophisticated global financial market visualization with holographic chart lines, ' +
-      'world map overlay with glowing connection points, and flowing data streams ' +
-      'in blue and emerald green on a dark navy background. ' +
-      'Professional fintech aesthetic, no text, wide landscape format.'
+      'global financial market visualization, holographic chart lines, world map overlay, ' +
+      'glowing data streams in blue and emerald green, dark navy background, ' +
+      'professional fintech aesthetic, no text, no letters'
     )
   }
   if (/ideco|確定拠出|年金|老後|退職金/.test(t)) {
     return (
-      'A warm illustration of golden coins growing into a flourishing tree with leaves ' +
-      'shaped like yen symbols, representing retirement savings and compound growth. ' +
-      'Soft blue sky background, optimistic and secure mood, clean design, ' +
-      'no text, professional financial illustration, wide landscape format.'
+      'golden coins growing into a flourishing tree, retirement savings concept, ' +
+      'compound growth illustration, soft blue sky background, optimistic secure mood, ' +
+      'clean minimal design, no text, no letters, professional financial illustration'
     )
   }
 
   return (
-    'A professional financial concept illustration showing golden coins stacked beside ' +
-    'an upward trending graph, abstract wealth and growth symbols, ' +
-    'blue and gold gradient background. Modern minimalist design, ' +
-    'no text, suitable for an investment blog article thumbnail, wide landscape format.'
+    'golden coins beside upward trending graph, abstract wealth and growth symbols, ' +
+    'blue and gold gradient background, modern minimalist financial design, ' +
+    'no text, no letters, investment blog thumbnail'
   )
 }
 
 export async function generateEyecatch(title: string): Promise<string | null> {
-  const apiKey = process.env['GEMINI_API_KEY']
-  if (!apiKey) {
-    log.info('GEMINI_API_KEY not set — skipping image generation')
-    return null
-  }
-
   try {
-    // v1alpha is required for image generation; v1beta returns 404 for this model
-    const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1alpha' } })
-
     const prompt = buildPrompt(title)
-    log.info({ model: MODEL, titleSnippet: title.slice(0, 40) }, 'generating eyecatch image')
+    const seed = Date.now() % 100_000
+    const url =
+      `${POLLINATIONS_BASE}/${encodeURIComponent(prompt)}` +
+      `?width=${IMAGE_WIDTH}&height=${IMAGE_HEIGHT}&nologo=true&model=flux&seed=${seed}`
 
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents: prompt,
-      config: {
-        responseModalities: [Modality.IMAGE, Modality.TEXT],
-      },
-    })
+    log.info({ titleSnippet: title.slice(0, 40) }, 'generating eyecatch via Pollinations.ai')
 
-    const parts = response.candidates?.[0]?.content?.parts ?? []
+    const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })
 
-    for (const part of parts) {
-      if (part.inlineData?.mimeType?.startsWith('image/') && part.inlineData.data) {
-        const ext = part.inlineData.mimeType === 'image/png' ? 'png' : 'jpg'
-        const imagePath = join(tmpdir(), `eyecatch-${Date.now()}.${ext}`)
-        await writeFile(imagePath, Buffer.from(part.inlineData.data, 'base64'))
-        log.info({ imagePath }, 'eyecatch image written to temp file')
-        return imagePath
-      }
+    if (!response.ok) {
+      log.warn({ status: response.status, url }, 'Pollinations returned non-OK — skipping eyecatch')
+      return null
     }
 
-    log.warn('Gemini returned no image part in response')
-    return null
+    const contentType = response.headers.get('content-type') ?? ''
+    const ext = contentType.includes('png') ? 'png' : 'jpg'
+    const imagePath = join(tmpdir(), `eyecatch-${Date.now()}.${ext}`)
+    const buffer = Buffer.from(await response.arrayBuffer())
+    await writeFile(imagePath, buffer)
+
+    log.info({ imagePath, bytes: buffer.length }, 'eyecatch image saved')
+    return imagePath
   } catch (e) {
     log.warn({ err: e }, 'image generation failed — continuing without eyecatch')
     return null

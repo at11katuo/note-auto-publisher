@@ -11,7 +11,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@google/genai": "^0.14.0",
     "@note/db": "workspace:*",
     "@note/logger": "workspace:*",
     "@note/shared": "workspace:*",
