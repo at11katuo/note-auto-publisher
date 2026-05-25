@@ -24,32 +24,6 @@ const SELECTOR_TAG_INPUT =
 const SELECTOR_SAVE_DRAFT =
   'button:has-text("下書き保存"), button[aria-label*="下書き保存"], [data-testid="save-draft-button"]'
 
-// Eyecatch (thumbnail) upload — broad selector list covering note.com editor variations
-const SELECTORS_EYECATCH_BUTTON = [
-  'button:has-text("サムネイル")',
-  'button:has-text("アイキャッチ")',
-  'button:has-text("カバー")',
-  'button:has-text("カバー画像")',
-  'button:has-text("ヘッダー画像")',
-  'button:has-text("画像を設定")',
-  'button:has-text("画像を追加")',
-  '[data-testid*="thumbnail"]',
-  '[data-testid*="eyecatch"]',
-  '[data-testid*="cover"]',
-  '[data-testid*="Cover"]',
-  '[data-testid*="header-image"]',
-  'button[aria-label*="サムネイル"]',
-  'button[aria-label*="アイキャッチ"]',
-  'button[aria-label*="カバー"]',
-  'button[aria-label*="画像"]',
-  'label[aria-label*="サムネイル"]',
-  'label[aria-label*="アイキャッチ"]',
-  '[class*="Cover"] button',
-  '[class*="cover"] button',
-  '[class*="Thumbnail"] button',
-  '[class*="thumbnail"] button',
-  '[class*="eyecatch"] button',
-]
 
 export type DraftPayload = {
   title: string
@@ -95,65 +69,50 @@ function parseMarkdown(body: string): Block[] {
 }
 
 async function uploadEyecatch(page: Page, imagePath: string): Promise<void> {
-  // Strategy A: hidden file input (Playwright can set files even on display:none inputs)
-  // Try this first — many modern SPAs keep an <input type="file"> in the DOM at all times
+  // note.com editor flow (confirmed from page dump):
+  //   1. Click button[aria-label="画像を追加"]  → sub-menu appears
+  //   2. Click button:has-text("画像をアップロード") in the sub-menu → file chooser opens
+  //   3. setFiles() on the file chooser
+  // The finally block always presses Escape to dismiss any open menu so it cannot
+  // block subsequent editor interactions (title fill, body fill, etc.).
+  let menuOpen = false
   try {
-    const fileInput = await page.$('input[type="file"]')
-    if (fileInput) {
-      log.info('found hidden file input — uploading directly via setInputFiles')
-      await fileInput.evaluate((el: HTMLInputElement) => { el.style.display = 'block' })
-      await fileInput.setInputFiles(imagePath)
-      await page.waitForTimeout(3_000)
-      log.info({ imagePath }, 'eyecatch uploaded via hidden file input')
+    const triggerBtn = await page.$('button[aria-label="画像を追加"]')
+    if (!triggerBtn) {
+      log.warn('eyecatch trigger button not found — skipping thumbnail upload')
       return
     }
+
+    log.info('clicking eyecatch trigger to open upload menu')
+    await triggerBtn.click()
+    menuOpen = true
+
+    // The sub-menu contains "画像をアップロード推奨サイズ：…" — match by prefix
+    const uploadBtn = await page
+      .waitForSelector('button:has-text("画像をアップロード")', { timeout: 5_000 })
+      .catch(() => null)
+
+    if (!uploadBtn) {
+      log.warn('upload sub-menu item not found — will dismiss menu')
+      return
+    }
+
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser', { timeout: 10_000 }),
+      uploadBtn.click(),
+    ])
+    menuOpen = false // file chooser is now open; sub-menu is gone
+
+    await fileChooser.setFiles(imagePath)
+    await page.waitForTimeout(3_000)
+    log.info({ imagePath }, 'eyecatch image uploaded')
   } catch (e) {
-    log.warn({ err: e }, 'hidden file input strategy failed — trying button click')
-  }
-
-  // Strategy B: find a visible trigger button and wait for file chooser event
-  let triggerEl: import('playwright').ElementHandle | null = null
-  for (const selector of SELECTORS_EYECATCH_BUTTON) {
-    triggerEl = await page.$(selector)
-    if (triggerEl) {
-      log.info({ selector }, 'found eyecatch trigger button')
-      break
+    log.warn({ err: e }, 'eyecatch upload failed — will dismiss menu and continue')
+  } finally {
+    if (menuOpen) {
+      await page.keyboard.press('Escape').catch(() => undefined)
+      await page.waitForTimeout(300)
     }
-  }
-
-  if (triggerEl) {
-    try {
-      const [fileChooser] = await Promise.all([
-        page.waitForEvent('filechooser', { timeout: 10_000 }),
-        triggerEl.click(),
-      ])
-      await fileChooser.setFiles(imagePath)
-      await page.waitForTimeout(3_000)
-      log.info({ imagePath }, 'eyecatch uploaded via file chooser')
-      return
-    } catch (e) {
-      log.warn({ err: e }, 'file chooser strategy failed')
-    }
-  }
-
-  // All strategies failed — dump page state for diagnosis
-  try {
-    type BtnInfo = { text: string | null; ariaLabel: string | null; testId: string | null; cls: string | null }
-    const buttons = await page.$$eval(
-      'button, [role="button"], label',
-      (els) =>
-        (els as HTMLElement[]).slice(0, 40).map((el) => ({
-          text: el.textContent?.trim().slice(0, 60) ?? null,
-          ariaLabel: el.getAttribute('aria-label'),
-          testId: el.getAttribute('data-testid'),
-          cls: el.className?.toString().slice(0, 80) ?? null,
-        })) as BtnInfo[],
-    )
-    log.warn({ buttons }, 'eyecatch button not found — page button dump for selector diagnosis')
-    await page.screenshot({ path: SCREENSHOT_PATH, fullPage: false })
-    log.warn({ path: SCREENSHOT_PATH }, 'eyecatch debug screenshot saved (view at /api/screenshot)')
-  } catch {
-    log.warn('eyecatch button not found and diagnostic dump also failed')
   }
 }
 
