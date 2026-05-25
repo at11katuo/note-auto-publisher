@@ -11,49 +11,71 @@ const IMAGE_WIDTH = 1200
 const IMAGE_HEIGHT = 630
 const TIMEOUT_MS = 60_000
 
+// Shared quality suffix appended to every prompt.
+// Flux (Pollinations.ai) responds strongly to these terms for sharp, premium output.
+const QUALITY =
+  'hyper-realistic commercial photography, crisp studio lighting, deep shadows, ' +
+  'ray-traced reflections, high-end 3D metallic shading, sharp lines, ' +
+  'solid geometric shapes, polished gold textures, ' +
+  'modern financial corporate design, premium minimalist aesthetic, ' +
+  'vibrant but professional color gradient, 8K ultra-sharp, no text, no letters, no watermark'
+
 function buildPrompt(title: string): string {
   const t = title.toLowerCase()
 
   if (/eth|ethereum|bitcoin|btc|crypto|defi|blockchain|仮想通貨|暗号/.test(t)) {
     return (
-      'interconnected glowing blue and gold nodes forming a blockchain network, ' +
-      'deep dark background, abstract geometric shapes, futuristic fintech aesthetic, ' +
-      'high contrast, vibrant colors, no text, no letters, professional financial illustration'
+      'a cluster of polished solid gold and chrome cryptocurrency coins floating in mid-air, ' +
+      'intricate circuit-board engravings on each coin surface, ' +
+      'electric blue blockchain network lines connecting them, ' +
+      'deep matte black background with subtle neon-blue ambient glow, ' +
+      'dramatic three-point studio lighting casting hard shadows, ' +
+      `wide landscape format, ${QUALITY}`
     )
   }
   if (/nisa|オルカン|all.country|index|インデックス|投資信託|emax/.test(t)) {
     return (
-      'steadily rising investment chart, warm golden tones, green upward arrow, ' +
-      'abstract growing plant symbolizing long-term wealth, clean white background, ' +
-      'professional financial concept art, no text, no letters, optimistic mood'
+      'a sleek polished gold bar and stacked silver coins arranged on a dark slate surface, ' +
+      'sharp upward-trending graph rendered in glowing green lines behind them, ' +
+      'crisp reflections on the metal surfaces, ' +
+      'clean gradient background from deep navy to soft white, ' +
+      `wide landscape format, ${QUALITY}`
     )
   }
   if (/fire|早期退職|副業|マイクロ法人|週3|自由/.test(t)) {
     return (
-      'silhouetted person relaxing on a mountain peak at sunrise, laptop open, ' +
-      'representing financial freedom and early retirement, soft pastel gradient sky, ' +
-      'minimal style, peaceful atmosphere, no text, no letters, inspirational'
+      'a lone figure standing on a dramatic mountain ridge at golden hour, ' +
+      'arms raised in triumph, warm orange and magenta sky behind, ' +
+      'a sleek silver laptop resting on a rock in the foreground, ' +
+      'long hard shadows, cinematic depth of field, photorealistic landscape, ' +
+      `wide landscape format, ${QUALITY}`
     )
   }
   if (/frb|fed|金利|米国|市場|株式|dow|nasdaq/.test(t)) {
     return (
-      'global financial market visualization, holographic chart lines, world map overlay, ' +
-      'glowing data streams in blue and emerald green, dark navy background, ' +
-      'professional fintech aesthetic, no text, no letters'
+      'a towering polished chrome globe with glowing financial chart lines etched across continents, ' +
+      'sharp gold candlestick chart bars rising in the foreground, ' +
+      'dramatic rim lighting on all metallic surfaces, ' +
+      'deep dark blue background with subtle city-light bokeh, ' +
+      `wide landscape format, ${QUALITY}`
     )
   }
   if (/ideco|確定拠出|年金|老後|退職金/.test(t)) {
     return (
-      'golden coins growing into a flourishing tree, retirement savings concept, ' +
-      'compound growth illustration, soft blue sky background, optimistic secure mood, ' +
-      'clean minimal design, no text, no letters, professional financial illustration'
+      'a stack of gleaming gold coins beside a robust metal piggy bank, ' +
+      'both objects reflecting studio lights with mirror-like clarity, ' +
+      'a single green upward arrow cast from solid metal standing next to them, ' +
+      'minimalist dark charcoal background with a focused spotlight, ' +
+      `wide landscape format, ${QUALITY}`
     )
   }
 
   return (
-    'golden coins beside upward trending graph, abstract wealth and growth symbols, ' +
-    'blue and gold gradient background, modern minimalist financial design, ' +
-    'no text, no letters, investment blog thumbnail'
+    'a perfectly arranged row of polished gold coins and a chrome bar graph rising sharply, ' +
+    'all objects rendered with hyper-realistic metallic reflections on a dark premium surface, ' +
+    'focused key light from above casting crisp hard shadows, ' +
+    'deep navy to black gradient background, ' +
+    `wide landscape format, ${QUALITY}`
   )
 }
 
