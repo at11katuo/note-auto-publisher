@@ -69,13 +69,14 @@ function parseMarkdown(body: string): Block[] {
 }
 
 async function uploadEyecatch(page: Page, imagePath: string): Promise<void> {
-  // note.com editor flow (confirmed from page dump):
-  //   1. Click button[aria-label="画像を追加"]  → sub-menu appears
-  //   2. Click button:has-text("画像をアップロード") in the sub-menu → file chooser opens
-  //   3. setFiles() on the file chooser
-  // The finally block always presses Escape to dismiss any open menu so it cannot
-  // block subsequent editor interactions (title fill, body fill, etc.).
-  let menuOpen = false
+  // Confirmed note.com editor flow:
+  //   1. button[aria-label="画像を追加"] → sub-menu opens
+  //   2. button:has-text("画像をアップロード") → file chooser opens
+  //   3. setFiles() → crop modal opens (ReactModalPortal / CropModal__overlay)
+  //   4. click confirm button in crop modal → modal closes, image is set
+  // The finally block always dismisses any open overlay via Escape so nothing
+  // can block the subsequent title / body fills.
+  let overlayOpen = false
   try {
     const triggerBtn = await page.$('button[aria-label="画像を追加"]')
     if (!triggerBtn) {
@@ -83,17 +84,15 @@ async function uploadEyecatch(page: Page, imagePath: string): Promise<void> {
       return
     }
 
-    log.info('clicking eyecatch trigger to open upload menu')
+    log.info('opening eyecatch upload menu')
     await triggerBtn.click()
-    menuOpen = true
+    overlayOpen = true
 
-    // The sub-menu contains "画像をアップロード推奨サイズ：…" — match by prefix
     const uploadBtn = await page
       .waitForSelector('button:has-text("画像をアップロード")', { timeout: 5_000 })
       .catch(() => null)
-
     if (!uploadBtn) {
-      log.warn('upload sub-menu item not found — will dismiss menu')
+      log.warn('upload sub-menu item not found — dismissing')
       return
     }
 
@@ -101,15 +100,53 @@ async function uploadEyecatch(page: Page, imagePath: string): Promise<void> {
       page.waitForEvent('filechooser', { timeout: 10_000 }),
       uploadBtn.click(),
     ])
-    menuOpen = false // file chooser is now open; sub-menu is gone
 
     await fileChooser.setFiles(imagePath)
-    await page.waitForTimeout(3_000)
-    log.info({ imagePath }, 'eyecatch image uploaded')
+    log.info('file selected — waiting for crop modal')
+
+    // Wait for crop modal to appear
+    await page.waitForSelector('.CropModal__overlay', { timeout: 8_000 }).catch(() => null)
+    await page.waitForTimeout(500)
+
+    // Confirm the crop — try known button texts in priority order
+    const CONFIRM_SELECTORS = [
+      '.ReactModalPortal button:has-text("確定")',
+      '.ReactModalPortal button:has-text("適用")',
+      '.ReactModalPortal button:has-text("保存")',
+      '.ReactModalPortal button:has-text("完了")',
+      '.ReactModalPortal button:has-text("OK")',
+      '.CropModal__overlay button:last-of-type',
+    ]
+    let confirmed = false
+    for (const sel of CONFIRM_SELECTORS) {
+      const btn = await page.$(sel).catch(() => null)
+      if (btn) {
+        log.info({ sel }, 'confirming crop modal')
+        await btn.click()
+        confirmed = true
+        break
+      }
+    }
+    if (!confirmed) {
+      log.warn('crop confirm button not found — pressing Enter')
+      await page.keyboard.press('Enter').catch(() => undefined)
+    }
+
+    // Wait for crop modal to close
+    await page
+      .waitForSelector('.CropModal__overlay', { state: 'detached', timeout: 10_000 })
+      .catch(() => undefined)
+
+    overlayOpen = false
+    await page.waitForTimeout(1_000)
+    log.info({ imagePath }, 'eyecatch image uploaded and crop confirmed')
   } catch (e) {
-    log.warn({ err: e }, 'eyecatch upload failed — will dismiss menu and continue')
+    log.warn({ err: e }, 'eyecatch upload failed — dismissing overlay and continuing')
   } finally {
-    if (menuOpen) {
+    if (overlayOpen) {
+      // Press Escape twice: once for crop modal, once for sub-menu if still open
+      await page.keyboard.press('Escape').catch(() => undefined)
+      await page.waitForTimeout(400)
       await page.keyboard.press('Escape').catch(() => undefined)
       await page.waitForTimeout(300)
     }
