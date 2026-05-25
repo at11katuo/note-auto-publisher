@@ -24,16 +24,31 @@ const SELECTOR_TAG_INPUT =
 const SELECTOR_SAVE_DRAFT =
   'button:has-text("下書き保存"), button[aria-label*="下書き保存"], [data-testid="save-draft-button"]'
 
-// Eyecatch (thumbnail) upload button — note.com uses several selectors across editor versions
+// Eyecatch (thumbnail) upload — broad selector list covering note.com editor variations
 const SELECTORS_EYECATCH_BUTTON = [
   'button:has-text("サムネイル")',
   'button:has-text("アイキャッチ")',
+  'button:has-text("カバー")',
+  'button:has-text("カバー画像")',
+  'button:has-text("ヘッダー画像")',
+  'button:has-text("画像を設定")',
+  'button:has-text("画像を追加")',
   '[data-testid*="thumbnail"]',
   '[data-testid*="eyecatch"]',
+  '[data-testid*="cover"]',
+  '[data-testid*="Cover"]',
+  '[data-testid*="header-image"]',
   'button[aria-label*="サムネイル"]',
   'button[aria-label*="アイキャッチ"]',
+  'button[aria-label*="カバー"]',
+  'button[aria-label*="画像"]',
   'label[aria-label*="サムネイル"]',
   'label[aria-label*="アイキャッチ"]',
+  '[class*="Cover"] button',
+  '[class*="cover"] button',
+  '[class*="Thumbnail"] button',
+  '[class*="thumbnail"] button',
+  '[class*="eyecatch"] button',
 ]
 
 export type DraftPayload = {
@@ -80,30 +95,66 @@ function parseMarkdown(body: string): Block[] {
 }
 
 async function uploadEyecatch(page: Page, imagePath: string): Promise<void> {
-  // Try each selector until one matches
+  // Strategy A: hidden file input (Playwright can set files even on display:none inputs)
+  // Try this first — many modern SPAs keep an <input type="file"> in the DOM at all times
+  try {
+    const fileInput = await page.$('input[type="file"]')
+    if (fileInput) {
+      log.info('found hidden file input — uploading directly via setInputFiles')
+      await fileInput.evaluate((el: HTMLInputElement) => { el.style.display = 'block' })
+      await fileInput.setInputFiles(imagePath)
+      await page.waitForTimeout(3_000)
+      log.info({ imagePath }, 'eyecatch uploaded via hidden file input')
+      return
+    }
+  } catch (e) {
+    log.warn({ err: e }, 'hidden file input strategy failed — trying button click')
+  }
+
+  // Strategy B: find a visible trigger button and wait for file chooser event
   let triggerEl: import('playwright').ElementHandle | null = null
   for (const selector of SELECTORS_EYECATCH_BUTTON) {
     triggerEl = await page.$(selector)
     if (triggerEl) {
-      log.info({ selector }, 'found eyecatch button')
+      log.info({ selector }, 'found eyecatch trigger button')
       break
     }
   }
 
-  if (!triggerEl) {
-    log.warn('eyecatch button not found — skipping thumbnail upload')
-    return
+  if (triggerEl) {
+    try {
+      const [fileChooser] = await Promise.all([
+        page.waitForEvent('filechooser', { timeout: 10_000 }),
+        triggerEl.click(),
+      ])
+      await fileChooser.setFiles(imagePath)
+      await page.waitForTimeout(3_000)
+      log.info({ imagePath }, 'eyecatch uploaded via file chooser')
+      return
+    } catch (e) {
+      log.warn({ err: e }, 'file chooser strategy failed')
+    }
   }
 
-  // Wait for the file chooser that the button triggers, then set the image file
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser', { timeout: 10_000 }),
-    triggerEl.click(),
-  ])
-  await fileChooser.setFiles(imagePath)
-  // Give note.com time to upload and process the image
-  await page.waitForTimeout(3_000)
-  log.info({ imagePath }, 'eyecatch image uploaded')
+  // All strategies failed — dump page state for diagnosis
+  try {
+    type BtnInfo = { text: string | null; ariaLabel: string | null; testId: string | null; cls: string | null }
+    const buttons = await page.$$eval(
+      'button, [role="button"], label',
+      (els) =>
+        (els as HTMLElement[]).slice(0, 40).map((el) => ({
+          text: el.textContent?.trim().slice(0, 60) ?? null,
+          ariaLabel: el.getAttribute('aria-label'),
+          testId: el.getAttribute('data-testid'),
+          cls: el.className?.toString().slice(0, 80) ?? null,
+        })) as BtnInfo[],
+    )
+    log.warn({ buttons }, 'eyecatch button not found — page button dump for selector diagnosis')
+    await page.screenshot({ path: SCREENSHOT_PATH, fullPage: false })
+    log.warn({ path: SCREENSHOT_PATH }, 'eyecatch debug screenshot saved (view at /api/screenshot)')
+  } catch {
+    log.warn('eyecatch button not found and diagnostic dump also failed')
+  }
 }
 
 async function fillTitle(page: Page, title: string): Promise<void> {
@@ -242,16 +293,24 @@ export function createDraftOnNote(
 
       log.info({ url: page.url() }, 'navigated to notes/new')
 
+      // Wait for the editor to finish rendering before any interaction.
+      // domcontentloaded fires before React paints components; waiting for the
+      // title selector confirms the editor is fully interactive.
+      const titleEl = await page
+        .waitForSelector(SELECTOR_TITLE, { timeout: TIMEOUT_ELEMENT })
+        .catch(async (e: unknown) => {
+          await captureErrorScreenshot(page, 'editor title never appeared')
+          throw e
+        })
+
       if (draft.eyecatchPath) {
         await uploadEyecatch(page, draft.eyecatchPath).catch((e: unknown) => {
           log.warn({ err: e }, 'eyecatch upload threw unexpectedly — continuing without thumbnail')
         })
       }
 
-      await fillTitle(page, draft.title).catch(async (e: unknown) => {
-        await captureErrorScreenshot(page, 'fillTitle failed')
-        throw e
-      })
+      await titleEl.click()
+      await titleEl.fill(draft.title)
       log.info('title filled')
 
       await fillBody(page, draft.body)
