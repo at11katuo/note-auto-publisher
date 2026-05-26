@@ -1,6 +1,7 @@
 import { writeFile, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import Anthropic from '@anthropic-ai/sdk'
 import { createLogger } from '@note/logger'
 
 const log = createLogger('publisher:image')
@@ -8,114 +9,100 @@ const log = createLogger('publisher:image')
 const POLLINATIONS_BASE = 'https://image.pollinations.ai/prompt'
 const IMAGE_WIDTH = 1200
 const IMAGE_HEIGHT = 630
-const TIMEOUT_MS = 90_000 // flux-realism takes longer than flux
+const IMAGE_TIMEOUT_MS = 90_000
+const POLLINATIONS_MODEL = 'flux-realism'
 
-// flux-realism: Pollinations' dedicated photorealism model — produces output
-// indistinguishable from real photography when given photographic prompts.
-// enhance=true: Pollinations' built-in LLM prompt enhancer runs before generation.
-const MODEL = 'flux-realism'
-const ENHANCE = 'true'
+// claude-haiku: fast and cheap for short prompt generation tasks
+const LLM_MODEL = 'claude-haiku-4-5-20251001'
 
-// Photographic quality suffix — framing output as a real editorial photograph,
-// not digital art, is the single most effective way to avoid the "AI look".
-const PHOTO_QUALITY =
-  'award-winning editorial photography, ' +
-  'shot on Sony A7R V mirrorless camera, 85mm f/1.4 lens, ' +
-  'perfect exposure, razor-sharp focus on subject, ' +
-  'shallow depth of field with smooth natural bokeh, ' +
-  'professional color grading, high dynamic range, ' +
-  'no text, no letters, no numbers, no watermark, no logo'
+// Quality suffix appended by the LLM instructions — defines the photographic
+// style that flux-realism responds to best.
+const QUALITY_SUFFIX =
+  'Hyper-realistic commercial photography, cinematic lighting, ' +
+  'shot on Sony A7R V 85mm f/1.4 lens, shallow depth of field, natural bokeh, ' +
+  'professional color grading, 8K ultra-sharp resolution, ' +
+  'no text, no letters, no numbers, no watermark'
 
-function buildPrompt(title: string): string {
-  const t = title.toLowerCase()
+// Fallback used when the LLM call fails for any reason.
+const FALLBACK_PROMPT =
+  'professional product photograph of gleaming gold coins and a rising bar chart ' +
+  'arranged on a dark premium slate surface, soft key studio lighting, ' +
+  'clean upscale corporate aesthetic, wide landscape composition, ' + QUALITY_SUFFIX
 
-  // ── Crypto / Blockchain ──────────────────────────────────────────────────
-  if (/eth|ethereum|bitcoin|btc|crypto|defi|blockchain|仮想通貨|暗号/.test(t)) {
-    return (
-      'macro product photograph of several gleaming gold physical Bitcoin coins ' +
-      'resting on a sleek dark brushed-metal surface, ' +
-      'fine condensation droplets catching a single directional spotlight, ' +
-      'rich specular highlights on the embossed coin edges, ' +
-      'cool blue-tinted background bokeh evoking a data-center ambience, ' +
-      'dramatic chiaroscuro lighting with deep precise shadows, ' +
-      `wide landscape composition, ${PHOTO_QUALITY}`
-    )
+const SYSTEM_PROMPT = `You are an expert image generation prompt engineer for a Japanese personal finance blog.
+
+Given a Japanese article title, output ONLY a single English image generation prompt string.
+Output nothing else — no explanations, no JSON, no markdown, no commentary — just the raw prompt text.
+
+Strict rules:
+1. Interpret the DEEP THEME behind the title, not just its surface words.
+   Transform abstract financial concepts into powerful visual metaphors and concrete photographic scenes.
+2. Describe the scene as a professional photographer directing a real photoshoot.
+   The result must look like an actual photograph, NOT a 3D render or digital illustration.
+3. The image must work as a compelling blog thumbnail that makes people want to click.
+4. Output must be in English only. No Japanese characters whatsoever.
+5. Never describe text, signs, charts on screens, or readable letters within the scene.
+6. You MUST end your output with exactly this quality suffix:
+   "${QUALITY_SUFFIX}"
+
+Visual metaphor palette for inspiration:
+- Saving / accumulation → glass jar overflowing with gold coins, seedling growing from coins
+- Investment growth    → stacked gold bars beside a lush green plant, sunrise over farmland
+- Financial freedom    → lone figure on a cliff edge with a laptop, open door revealing vast ocean
+- Market volatility    → storm clouds over a glass skyscraper, a tightrope over a lit cityscape
+- Tax / efficiency     → a precise mechanical gear system made of gold, a magnifying glass over coins
+- Crypto / blockchain  → physical gold coins with circuit engravings, electric-blue network in darkness
+- Retirement / future  → an elderly couple walking on a sunlit beach, a lighthouse at sunset`
+
+async function generateDynamicPrompt(title: string): Promise<string> {
+  const apiKey = process.env['ANTHROPIC_API_KEY']
+  if (!apiKey) {
+    log.warn('ANTHROPIC_API_KEY not set — using fallback prompt')
+    return FALLBACK_PROMPT
   }
 
-  // ── NISA / Index investing ───────────────────────────────────────────────
-  if (/nisa|オルカン|all.country|index|インデックス|投資信託|emax/.test(t)) {
-    return (
-      'overhead flat-lay photograph on a minimalist pale-oak desk: ' +
-      'a slim open notebook with a hand-drawn rising-arrow sketch, ' +
-      'a luxury matte-black ballpoint pen, two neat stacks of gold coins, ' +
-      'and one small bright-green succulent plant, ' +
-      'soft diffused natural window light from the upper left, ' +
-      'clean warm-white surface with gentle long shadows, ' +
-      `wide landscape composition, ${PHOTO_QUALITY}`
-    )
-  }
+  try {
+    const client = new Anthropic({ apiKey })
 
-  // ── FIRE / Early retirement ──────────────────────────────────────────────
-  if (/fire|早期退職|副業|マイクロ法人|週3|自由/.test(t)) {
-    return (
-      'cinematic wide-angle photograph of a relaxed man in his early 30s ' +
-      'sitting on a rocky cliff edge at golden hour, ' +
-      'using a silver MacBook Pro, overlooking a vast valley filled with low morning cloud, ' +
-      'warm amber and rose-pink sky, long directional shadows across the rocky foreground, ' +
-      'Fujifilm Velvia film-emulation color grade, aspirational lifestyle feel, ' +
-      `wide landscape composition, ${PHOTO_QUALITY}`
-    )
-  }
+    const response = await client.messages.create({
+      model: LLM_MODEL,
+      max_tokens: 450,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: `Article title: "${title}"` }],
+    })
 
-  // ── FRB / US markets / interest rates ────────────────────────────────────
-  if (/frb|fed|金利|米国|市場|株式|dow|nasdaq/.test(t)) {
-    return (
-      'dramatic low-angle night photograph looking up at the glass facade ' +
-      'of a towering modern skyscraper in a major financial district, ' +
-      'vivid blue and amber city lights reflected across the curved glass panels, ' +
-      'bright bokeh circles from street lamps below, ' +
-      'deep inky shadows at street level, ' +
-      'high-contrast urban-night aesthetic with a powerful sense of scale, ' +
-      `wide landscape composition, ${PHOTO_QUALITY}`
-    )
-  }
+    const block = response.content[0]
+    if (block?.type !== 'text' || !block.text.trim()) {
+      throw new Error('LLM returned empty or non-text response')
+    }
 
-  // ── iDeCo / Pension / Retirement savings ─────────────────────────────────
-  if (/ideco|確定拠出|年金|老後|退職金/.test(t)) {
-    return (
-      'close-up macro photograph of a clear glass jar half-filled with gold coins, ' +
-      'a single bright-green plant sprout growing upward from between the coins, ' +
-      'resting on a dark matte slate surface, ' +
-      'single soft overhead key light creating a warm pool of light on the jar, ' +
-      'foreground and background gently blurred, ' +
-      'calm optimistic atmosphere suggesting patient long-term growth, ' +
-      `wide landscape composition, ${PHOTO_QUALITY}`
+    const prompt = block.text.trim()
+    log.info(
+      { titleSnippet: title.slice(0, 40), promptLength: prompt.length },
+      'dynamic image prompt generated',
     )
+    return prompt
+  } catch (e) {
+    log.warn({ err: e }, 'dynamic prompt generation failed — using fallback prompt')
+    return FALLBACK_PROMPT
   }
-
-  // ── Default / General investment ─────────────────────────────────────────
-  return (
-    'professional product photograph of a neat row of polished gold coins ' +
-    'and a small gleaming silver trophy cup on a premium dark-leather surface, ' +
-    'three-point studio lighting creating smooth tonal gradients on each coin, ' +
-    'subtle warm reflections in the leather, ' +
-    'shallow depth of field, clean upscale corporate aesthetic, ' +
-    `wide landscape composition, ${PHOTO_QUALITY}`
-  )
 }
 
 export async function generateEyecatch(title: string): Promise<string | null> {
   try {
-    const prompt = buildPrompt(title)
+    const prompt = await generateDynamicPrompt(title)
     const seed = Date.now() % 100_000
     const url =
       `${POLLINATIONS_BASE}/${encodeURIComponent(prompt)}` +
       `?width=${IMAGE_WIDTH}&height=${IMAGE_HEIGHT}` +
-      `&nologo=true&model=${MODEL}&enhance=${ENHANCE}&seed=${seed}`
+      `&nologo=true&model=${POLLINATIONS_MODEL}&enhance=true&seed=${seed}`
 
-    log.info({ model: MODEL, titleSnippet: title.slice(0, 40) }, 'generating eyecatch via Pollinations.ai')
+    log.info(
+      { model: POLLINATIONS_MODEL, titleSnippet: title.slice(0, 40) },
+      'generating eyecatch via Pollinations.ai',
+    )
 
-    const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })
+    const response = await fetch(url, { signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS) })
 
     if (!response.ok) {
       log.warn({ status: response.status }, 'Pollinations returned non-OK — skipping eyecatch')
