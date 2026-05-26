@@ -139,6 +139,7 @@ export async function regenerateDraft(
         charCount: bodyWithDisclaimer.length,
         status: 'draft',
         feedback,
+        parentDraftId: draft.id,
         llmModel: 'claude-sonnet-4-5',
         promptVersion: PROMPT_VERSION,
       },

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { prisma } from '@note/db';
 import { approveDraft, rejectDraft, triggerPublish, updateDraft, regenerateDraft } from '@/server/actions/draft';
 import { RegenerateForm } from '@/components/regenerate-form';
+import { DraftBeforePanel } from '@/components/draft-before-panel';
 
 export const revalidate = 0;
 
@@ -29,6 +30,13 @@ export default async function DraftDetailPage({ params }: Props) {
   });
 
   if (!draft) notFound();
+
+  const parentDraft = draft.parentDraftId
+    ? await prisma.draft.findUnique({
+        where: { id: draft.parentDraftId },
+        select: { title: true, body: true, generatedAt: true },
+      })
+    : null;
 
   const saveAction = updateDraft.bind(null, draft.id);
   const approveAction = approveDraft.bind(null, draft.id);
@@ -80,6 +88,16 @@ export default async function DraftDetailPage({ params }: Props) {
           </p>
         )}
       </div>
+
+      {/* 変更前との比較パネル（再生成後のみ表示） */}
+      {parentDraft && draft.feedback && (
+        <DraftBeforePanel
+          parentTitle={parentDraft.title}
+          parentBody={parentDraft.body}
+          parentGeneratedAt={parentDraft.generatedAt.toISOString()}
+          feedback={draft.feedback}
+        />
+      )}
 
       {/* 編集フォーム */}
       <form action={saveAction} className="space-y-4">
