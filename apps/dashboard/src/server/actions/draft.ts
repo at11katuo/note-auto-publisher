@@ -91,52 +91,64 @@ export async function rejectDraft(id: string, formData: FormData): Promise<void>
   revalidatePath('/');
 }
 
-export async function regenerateDraft(id: string, formData: FormData): Promise<void> {
+export type RegenerateState = { error: string } | null;
+
+export async function regenerateDraft(
+  id: string,
+  _prevState: RegenerateState,
+  formData: FormData,
+): Promise<RegenerateState> {
   const feedback = (formData.get('feedback') as string | null)?.trim() ?? '';
-  if (!feedback) return;
+  if (!feedback) return { error: 'フィードバックを入力してください' };
 
-  const draft = await prisma.draft.findUnique({
-    where: { id },
-    include: { idea: true },
-  });
-  if (!draft) throw new Error(`Draft not found: ${id}`);
-  if (!draft.idea) throw new Error('この下書きにはネタ情報が紐付いていないため再生成できません。');
+  let newDraftId: string | undefined;
+  try {
+    const draft = await prisma.draft.findUnique({
+      where: { id },
+      include: { idea: true },
+    });
+    if (!draft) return { error: '下書きが見つかりません' };
+    if (!draft.idea) return { error: 'この下書きにはネタ情報が紐付いていないため再生成できません' };
 
-  const apiKey = process.env['ANTHROPIC_API_KEY'];
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
+    const apiKey = process.env['ANTHROPIC_API_KEY'];
+    if (!apiKey) return { error: 'ANTHROPIC_API_KEY が設定されていません' };
 
-  const client = new Anthropic({ apiKey });
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 8000,
-    temperature: 0.7,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildArticlePrompt(draft.idea, feedback) }],
-  });
+    const client = new Anthropic({ apiKey });
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 8000,
+      temperature: 0.7,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildArticlePrompt(draft.idea, feedback) }],
+    });
 
-  const firstContent = response.content[0];
-  if (!firstContent || firstContent.type !== 'text') {
-    throw new Error('Unexpected response format from Claude API');
+    const firstContent = response.content[0];
+    if (!firstContent || firstContent.type !== 'text') {
+      return { error: 'Claude API から予期しないレスポンスが返されました' };
+    }
+
+    const parsed = articleSchema.parse(JSON.parse(extractJson(firstContent.text)));
+    const bodyWithDisclaimer = parsed.body + DISCLAIMER;
+
+    const newDraft = await prisma.draft.create({
+      data: {
+        ideaId: draft.ideaId,
+        title: parsed.title,
+        body: bodyWithDisclaimer,
+        tags: JSON.stringify(parsed.tags),
+        charCount: bodyWithDisclaimer.length,
+        status: 'draft',
+        feedback,
+        llmModel: 'claude-sonnet-4-5',
+        promptVersion: PROMPT_VERSION,
+      },
+    });
+    newDraftId = newDraft.id;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
   }
-
-  const parsed = articleSchema.parse(JSON.parse(extractJson(firstContent.text)));
-  const bodyWithDisclaimer = parsed.body + DISCLAIMER;
-
-  const newDraft = await prisma.draft.create({
-    data: {
-      ideaId: draft.ideaId,
-      title: parsed.title,
-      body: bodyWithDisclaimer,
-      tags: JSON.stringify(parsed.tags),
-      charCount: bodyWithDisclaimer.length,
-      status: 'draft',
-      feedback,
-      llmModel: 'claude-sonnet-4-5',
-      promptVersion: PROMPT_VERSION,
-    },
-  });
 
   revalidatePath('/drafts');
   revalidatePath('/');
-  redirect(`/drafts/${newDraft.id}`);
+  redirect(`/drafts/${newDraftId}`);
 }

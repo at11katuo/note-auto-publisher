@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@note/db';
 import { approveDraft, rejectDraft, triggerPublish, updateDraft, regenerateDraft } from '@/server/actions/draft';
+import { RegenerateForm } from '@/components/regenerate-form';
 
 export const revalidate = 0;
 
@@ -174,26 +175,7 @@ export default async function DraftDetailPage({ params }: Props) {
       {canRegenerate && (
         <div className="space-y-3 border-t border-gray-800 pt-6">
           <p className="text-sm font-medium text-gray-400">記事を再生成</p>
-          <form action={regenerateAction} className="space-y-2">
-            <textarea
-              name="feedback"
-              required
-              rows={4}
-              placeholder="修正の指示を入力してください（例: 導入部をもっと口語体にして、専門用語を減らして読みやすくしてほしい）"
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none resize-y"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-purple-700 py-3 text-sm font-semibold text-white hover:bg-purple-600 active:scale-95 transition-transform"
-            >
-              指摘を反映して再生成
-            </button>
-          </form>
-          {draft.feedback && (
-            <div className="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-400">
-              <span className="text-gray-500">前回の指摘: </span>{draft.feedback}
-            </div>
-          )}
+          <RegenerateForm action={regenerateAction} prevFeedback={draft.feedback} />
         </div>
       )}
     </main>
