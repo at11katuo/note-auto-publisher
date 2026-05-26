@@ -40,6 +40,7 @@ model Draft {
   publishedAt   DateTime?
   noteUrl       String?
   rejectReason  String?
+  feedback      String?   // 再生成時に使用したフィードバック
   llmModel      String    // "claude-sonnet-4-5" など
   promptVersion String    // "v1.0" など、プロンプトのバージョン管理用
   deletedAt     DateTime?

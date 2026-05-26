@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@note/db';
-import { approveDraft, rejectDraft, triggerPublish, updateDraft } from '@/server/actions/draft';
+import { approveDraft, rejectDraft, triggerPublish, updateDraft, regenerateDraft } from '@/server/actions/draft';
 
 export const revalidate = 0;
 
@@ -33,10 +33,12 @@ export default async function DraftDetailPage({ params }: Props) {
   const approveAction = approveDraft.bind(null, draft.id);
   const rejectAction = rejectDraft.bind(null, draft.id);
   const publishAction = triggerPublish.bind(null, draft.id);
+  const regenerateAction = regenerateDraft.bind(null, draft.id);
 
   const statusColor = STATUS_COLOR[draft.status] ?? 'bg-gray-800 text-gray-400';
   const isDraft = draft.status === 'draft';
   const isApproved = draft.status === 'approved';
+  const canRegenerate = (isDraft || draft.status === 'rejected') && !!draft.ideaId;
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-8 space-y-6">
@@ -165,6 +167,33 @@ export default async function DraftDetailPage({ params }: Props) {
               却下する
             </button>
           </form>
+        </div>
+      )}
+
+      {/* 再生成（下書き・却下のみ、ネタ紐付きの場合のみ） */}
+      {canRegenerate && (
+        <div className="space-y-3 border-t border-gray-800 pt-6">
+          <p className="text-sm font-medium text-gray-400">記事を再生成</p>
+          <form action={regenerateAction} className="space-y-2">
+            <textarea
+              name="feedback"
+              required
+              rows={4}
+              placeholder="修正の指示を入力してください（例: 導入部をもっと口語体にして、専門用語を減らして読みやすくしてほしい）"
+              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none resize-y"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-purple-700 py-3 text-sm font-semibold text-white hover:bg-purple-600 active:scale-95 transition-transform"
+            >
+              指摘を反映して再生成
+            </button>
+          </form>
+          {draft.feedback && (
+            <div className="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-400">
+              <span className="text-gray-500">前回の指摘: </span>{draft.feedback}
+            </div>
+          )}
         </div>
       )}
     </main>

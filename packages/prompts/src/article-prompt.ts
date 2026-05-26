@@ -1,7 +1,11 @@
 import type { Idea } from '@note/shared'
 
-export function buildArticlePrompt(idea: Idea): string {
-  return `以下のネタを元に、note に投稿する記事を書いてください。
+export function buildArticlePrompt(idea: Idea, feedback?: string): string {
+  const feedbackSection = feedback?.trim()
+    ? `\n\n【前回の記事への指摘・修正依頼】\n以下の指摘を反映して記事を書き直してください:\n${feedback.trim()}`
+    : ''
+
+  return `以下のネタを元に、note に投稿する記事を書いてください。${feedbackSection}
 
 【ネタ情報】
 タイトル: ${idea.title}
