@@ -11,7 +11,7 @@ import { createLogger } from '@note/logger'
 
 const log = createLogger('generator:director')
 
-export const HERMES_MODEL = 'nousresearch/hermes-3-llama-3.1-70b'
+export const HERMES_MODEL = 'meta-llama/llama-3.3-70b-instruct'
 
 const MAX_AGENT_ITERATIONS = 8
 const MAX_JSON_RETRIES = 3
