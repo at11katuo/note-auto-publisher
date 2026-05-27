@@ -25,7 +25,7 @@ const logger = createLogger('generator')
 const articleSchema = z.object({
   title: z.string().min(20).max(60),
   tags: z.array(z.string()).min(1).max(10),
-  body: z.string().min(1500),
+  body: z.string().min(800),
 })
 
 export function extractJson(text: string): string {

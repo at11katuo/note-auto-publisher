@@ -50,7 +50,15 @@ Research a given article topic using web search (max 3 times), then produce a st
 - Market volatility       → storm clouds over a glass skyscraper, tightrope over lit cityscape
 - Tax / efficiency        → precise mechanical gear system made of gold, magnifying glass over coins
 - Index investing / NISA  → a calm library with open ledgers, quiet sunrise over a portfolio chart
-- Retirement / FIRE       → elderly couple walking on a sunlit beach, lighthouse at golden hour`
+- Retirement / FIRE       → elderly couple walking on a sunlit beach, lighthouse at golden hour
+
+## ABSOLUTE FINAL RULE — NO EXCEPTIONS
+You MUST always end your response with the JSON object described above.
+- If search results are empty or unhelpful: output the JSON using your general financial knowledge.
+- If you are stopping early: output the JSON immediately before stopping.
+- Outputting explanatory text only, or outputting nothing, is strictly forbidden.
+- An empty response or a response without the JSON object is a critical failure.
+Your response is only valid if it contains the JSON object. Always output the JSON. No exceptions.`
 
 export function buildDirectorUserPrompt(idea: Idea): string {
   return `記事ネタ:
