@@ -20,6 +20,12 @@ vi.mock('../anthropic.js', () => ({
   callWithRetry: vi.fn(async (fn: () => Promise<unknown>) => fn()),
 }))
 
+// Hermes Director は常に失敗させてフォールバックパスをテストする
+vi.mock('../openrouter.js', () => ({
+  runDirector: vi.fn(async () => ({ isOk: () => false, isErr: () => true, error: new Error('mock: openrouter disabled') })),
+  HERMES_MODEL: 'nousresearch/hermes-3-llama-3.1-70b',
+}))
+
 vi.mock('@note/db', () => ({
   prisma: {
     draft: { create: mockDraftCreate },
@@ -49,6 +55,7 @@ const mockIdea: Idea = {
   status: 'new',
   collectedAt: new Date(),
   usedAt: null,
+  deletedAt: null,
 }
 
 const validArticleJson = JSON.stringify({
@@ -79,8 +86,12 @@ const mockDraft: Draft = {
   publishedAt: null,
   noteUrl: null,
   rejectReason: null,
+  feedback: null,
+  parentDraftId: null,
+  imagePrompt: null,
   llmModel: 'claude-sonnet-4-5',
   promptVersion: 'v1.0.0',
+  deletedAt: null,
 }
 
 describe('extractJson', () => {

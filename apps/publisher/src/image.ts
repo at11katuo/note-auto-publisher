@@ -88,9 +88,14 @@ async function generateDynamicPrompt(title: string): Promise<string> {
   }
 }
 
-export async function generateEyecatch(title: string): Promise<string | null> {
+export async function generateEyecatch(
+  title: string,
+  prebuiltPrompt?: string | null,
+): Promise<string | null> {
   try {
-    const prompt = await generateDynamicPrompt(title)
+    const prompt = prebuiltPrompt?.trim()
+      ? prebuiltPrompt.trim()
+      : await generateDynamicPrompt(title)
     const seed = Date.now() % 100_000
     const url =
       `${POLLINATIONS_BASE}/${encodeURIComponent(prompt)}` +
@@ -98,7 +103,11 @@ export async function generateEyecatch(title: string): Promise<string | null> {
       `&nologo=true&model=${POLLINATIONS_MODEL}&enhance=true&seed=${seed}`
 
     log.info(
-      { model: POLLINATIONS_MODEL, titleSnippet: title.slice(0, 40) },
+      {
+        model: POLLINATIONS_MODEL,
+        titleSnippet: title.slice(0, 40),
+        source: prebuiltPrompt ? 'db-stored' : 'llm-generated',
+      },
       'generating eyecatch via Pollinations.ai',
     )
 

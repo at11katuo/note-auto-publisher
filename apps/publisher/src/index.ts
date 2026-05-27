@@ -106,8 +106,8 @@ async function runPublishDraft(draftId: string): Promise<number> {
       data: { draftId, action: 'submitted', detail: null },
     })
 
-    // Generate eyecatch image (gracefully degrades to null on any failure)
-    eyecatchPath = await generateEyecatch(draft.title)
+    // Generate eyecatch image — use Hermes pre-built prompt if available
+    eyecatchPath = await generateEyecatch(draft.title, draft.imagePrompt)
 
     const tags = parseTags(draft.tags)
     const postRes = await createDraftOnNote(session.page, {

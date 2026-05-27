@@ -42,6 +42,7 @@ model Draft {
   rejectReason  String?
   feedback      String?   // 再生成時に使用したフィードバック
   parentDraftId String?   // 再生成元の下書きID
+  imagePrompt   String?   // Hermes が生成した Pollinations 用画像プロンプト
   llmModel      String    // "claude-sonnet-4-5" など
   promptVersion String    // "v1.0" など、プロンプトのバージョン管理用
   deletedAt     DateTime?

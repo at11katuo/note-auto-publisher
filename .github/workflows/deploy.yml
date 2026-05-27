@@ -37,6 +37,7 @@ jobs:
             echo "X_BEARER_TOKEN=${{ secrets.X_BEARER_TOKEN }}" >> .env
             echo "TAVILY_API_KEY=${{ secrets.TAVILY_API_KEY }}" >> .env
             echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+            echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
 
             echo "==> docker compose build"
             docker compose build

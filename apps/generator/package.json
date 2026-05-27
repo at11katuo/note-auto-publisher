@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
+    "@tavily/core": "^0.5.0",
     "@note/db": "workspace:*",
     "@note/logger": "workspace:*",
     "@note/prompts": "workspace:*",
     "@note/shared": "workspace:*",
     "neverthrow": "^8.1.1",
+    "openai": "^4.76.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -4,8 +4,10 @@ import { prisma, type Idea, type Draft } from '@note/db'
 import {
   SYSTEM_PROMPT,
   buildArticlePrompt,
+  buildWriterPrompt,
   DISCLAIMER,
   PROMPT_VERSION,
+  PROMPT_VERSION_V2,
 } from '@note/prompts'
 import { createLogger } from '@note/logger'
 import {
@@ -15,6 +17,7 @@ import {
   TEMPERATURE,
   callWithRetry,
 } from './anthropic.js'
+import { runDirector, HERMES_MODEL } from './openrouter.js'
 import { validateArticle } from './validate.js'
 
 const logger = createLogger('generator')
@@ -32,13 +35,47 @@ export function extractJson(text: string): string {
 }
 
 export function countChars(text: string): number {
-  // 改行・マークダウン記号・空白を除いた実質文字数
   return text.replace(/[\s\r\n#*`>\-|~_[\]()!]/g, '').length
 }
 
-export async function generateArticle(
-  idea: Idea,
-): Promise<Result<Draft, Error>> {
+export async function generateArticle(idea: Idea): Promise<Result<Draft, Error>> {
+  const openrouterKey = process.env['OPENROUTER_API_KEY']
+  const tavilyKey = process.env['TAVILY_API_KEY']
+
+  let imagePrompt: string | null = null
+  let llmModel = MODEL
+  let promptVersion = PROMPT_VERSION
+  let userPrompt: string
+
+  // ── Stage 1: Hermes Director ─────────────────────────────────────────────
+  if (openrouterKey) {
+    logger.info({ ideaId: idea.id }, 'Stage 1: Hermes Director starting')
+
+    const directorResult = await runDirector(idea, openrouterKey, tavilyKey)
+
+    if (directorResult.isOk()) {
+      const director = directorResult.value
+      imagePrompt = director.image_prompt
+      userPrompt = buildWriterPrompt(director, idea)
+      llmModel = `${HERMES_MODEL}+${MODEL}`
+      promptVersion = PROMPT_VERSION_V2
+      logger.info(
+        { ideaId: idea.id, sections: director.outline.sections.length },
+        'Stage 1 complete — outline and image prompt generated',
+      )
+    } else {
+      logger.warn(
+        { ideaId: idea.id, err: directorResult.error.message },
+        'Stage 1 failed — falling back to single-stage Claude',
+      )
+      userPrompt = buildArticlePrompt(idea)
+    }
+  } else {
+    logger.info({ ideaId: idea.id }, 'OPENROUTER_API_KEY not set — single-stage Claude')
+    userPrompt = buildArticlePrompt(idea)
+  }
+
+  // ── Stage 2: Claude Writer ───────────────────────────────────────────────
   const client = getAnthropicClient()
 
   let rawText: string
@@ -49,7 +86,7 @@ export async function generateArticle(
         max_tokens: MAX_TOKENS,
         temperature: TEMPERATURE,
         system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: buildArticlePrompt(idea) }],
+        messages: [{ role: 'user', content: userPrompt }],
       }),
     )
 
@@ -76,17 +113,10 @@ export async function generateArticle(
 
   const bodyWithDisclaimer = parsed.body + DISCLAIMER
   const charCount = countChars(bodyWithDisclaimer)
-  const validation = validateArticle({
-    title: parsed.title,
-    body: bodyWithDisclaimer,
-    charCount,
-  })
+  const validation = validateArticle({ title: parsed.title, body: bodyWithDisclaimer, charCount })
 
   if (!validation.ok) {
-    logger.warn(
-      { ideaId: idea.id, reason: validation.reason },
-      'Article failed validation',
-    )
+    logger.warn({ ideaId: idea.id, reason: validation.reason }, 'Article failed validation')
   }
 
   try {
@@ -99,8 +129,9 @@ export async function generateArticle(
         charCount,
         status: validation.ok ? 'draft' : 'rejected',
         rejectReason: validation.ok ? null : validation.reason,
-        llmModel: MODEL,
-        promptVersion: PROMPT_VERSION,
+        imagePrompt,
+        llmModel,
+        promptVersion,
       },
     })
 
@@ -110,7 +141,7 @@ export async function generateArticle(
     })
 
     logger.info(
-      { draftId: draft.id, status: draft.status, charCount },
+      { draftId: draft.id, status: draft.status, charCount, pipeline: promptVersion },
       'Draft saved',
     )
     return ok(draft)

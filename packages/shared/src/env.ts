@@ -11,6 +11,7 @@ const envSchema = z.object({
   X_BEARER_TOKEN: z.string().optional(),
   TAVILY_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z
     .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
