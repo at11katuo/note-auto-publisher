@@ -1,4 +1,5 @@
 import { prisma } from '@note/db';
+import { formatDateJST } from '@/lib/format-date';
 
 export const revalidate = 0;
 
@@ -65,7 +66,7 @@ export default async function IdeasPage() {
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                   <span>{SOURCE_LABEL[idea.source] ?? idea.source}</span>
-                  <span>{new Date(idea.collectedAt).toLocaleDateString('ja-JP')}</span>
+                  <span>{formatDateJST(idea.collectedAt)}</span>
                   {topics.map((t) => (
                     <span key={t} className="rounded bg-gray-800 px-1.5 py-0.5 text-gray-400">
                       {t}

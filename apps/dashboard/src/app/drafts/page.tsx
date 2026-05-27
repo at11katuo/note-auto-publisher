@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { prisma } from '@note/db';
+import { formatDateJST } from '@/lib/format-date';
 
 export const revalidate = 0;
 
@@ -75,7 +76,7 @@ export default async function DraftsPage() {
                     <span>{draft.charCount.toLocaleString()} 字</span>
                     <span>{draft.llmModel}</span>
                     <span>v{draft.promptVersion}</span>
-                    <span>{new Date(draft.generatedAt).toLocaleDateString('ja-JP')}</span>
+                    <span>{formatDateJST(draft.generatedAt)}</span>
                   </div>
 
                   {draft.rejectReason && (

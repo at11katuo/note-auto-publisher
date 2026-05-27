@@ -4,6 +4,7 @@ import { prisma } from '@note/db';
 import { approveDraft, rejectDraft, triggerPublish, updateDraft, regenerateDraft } from '@/server/actions/draft';
 import { RegenerateForm } from '@/components/regenerate-form';
 import { DraftBeforePanel } from '@/components/draft-before-panel';
+import { formatDateTimeJST } from '@/lib/format-date';
 
 export const revalidate = 0;
 
@@ -73,7 +74,7 @@ export default async function DraftDetailPage({ params }: Props) {
       <div className="rounded-lg border border-gray-800 bg-gray-900 p-4 text-xs text-gray-500 space-y-1">
         {draft.idea && <p>ネタ: <span className="text-gray-300">{draft.idea.title}</span></p>}
         <p>モデル: <span className="text-gray-300">{draft.llmModel}</span> / プロンプト v{draft.promptVersion}</p>
-        <p>生成日: <span className="text-gray-300">{new Date(draft.generatedAt).toLocaleString('ja-JP')}</span></p>
+        <p>生成日: <span className="text-gray-300">{formatDateTimeJST(draft.generatedAt)}</span></p>
         <p>文字数: <span className="text-gray-300">{draft.charCount.toLocaleString()} 字</span></p>
         {draft.rejectReason && (
           <p className="text-red-400">却下理由: {draft.rejectReason}</p>

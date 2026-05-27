@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTimeJST } from '@/lib/format-date';
 
 type Props = {
   parentTitle: string;
@@ -37,7 +38,7 @@ export function DraftBeforePanel({ parentTitle, parentBody, parentGeneratedAt, f
             <p className="mb-1 text-xs font-medium text-gray-500">
               変更前タイトル
               <span className="ml-2 text-gray-600">
-                ({new Date(parentGeneratedAt).toLocaleString('ja-JP')})
+                ({formatDateTimeJST(parentGeneratedAt)})
               </span>
             </p>
             <p className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-300">
