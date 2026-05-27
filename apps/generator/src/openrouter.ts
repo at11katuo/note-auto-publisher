@@ -14,6 +14,7 @@ const log = createLogger('generator:director')
 export const HERMES_MODEL = 'meta-llama/llama-3.3-70b-instruct'
 
 const MAX_AGENT_ITERATIONS = 8
+const MAX_SEARCH_CALLS = 3
 const MAX_JSON_RETRIES = 3
 
 const directorOutputSchema = z.object({
@@ -135,20 +136,36 @@ export async function runDirector(
 
   // ── Phase 1: Agentic tool-calling loop ──────────────────────────────────
   let finalContent: string | null = null
+  let searchCount = 0
 
   try {
     for (let iter = 0; iter < MAX_AGENT_ITERATIONS; iter++) {
+      // Once search limit is reached, forbid further tool calls at the API level
+      const toolChoice: OpenAI.ChatCompletionCreateParams['tool_choice'] =
+        searchCount >= MAX_SEARCH_CALLS ? 'none' : 'auto'
+
+      if (searchCount >= MAX_SEARCH_CALLS && toolChoice === 'none') {
+        // Inject a reminder so the model knows it must output JSON now
+        messages.push({
+          role: 'user',
+          content:
+            `You have already called tavily_search ${searchCount} times (the maximum). ` +
+            'Do NOT search again. Output the final JSON now using the information you have gathered. ' +
+            'Fill any gaps with general financial knowledge.',
+        })
+      }
+
       const response = await client.chat.completions.create({
         model: HERMES_MODEL,
         messages,
         tools: [TAVILY_TOOL],
-        tool_choice: 'auto',
+        tool_choice: toolChoice,
         temperature: 0.3,
         max_tokens: 2500,
       })
 
       const msg = response.choices[0]?.message
-      if (!msg) return err(new Error('Hermes returned empty choice'))
+      if (!msg) return err(new Error('Director returned empty choice'))
 
       // Append assistant turn to history
       messages.push(msg as OpenAI.ChatCompletionMessageParam)
@@ -156,7 +173,7 @@ export async function runDirector(
       if (!msg.tool_calls || msg.tool_calls.length === 0) {
         // No tool calls → final answer
         finalContent = msg.content ?? ''
-        log.info({ iter, length: finalContent.length }, 'Hermes Director finished thinking')
+        log.info({ iter, searchCount, length: finalContent.length }, 'Director finished')
         break
       }
 
@@ -178,7 +195,8 @@ export async function runDirector(
           args = { query: idea.title }
         }
 
-        log.info({ query: args.query, iter }, 'Director calling Tavily')
+        searchCount++
+        log.info({ query: args.query, iter, searchCount }, 'Director calling Tavily')
         const result = await executeTavilySearch(args.query, tavilyApiKey)
         messages.push({ role: 'tool', tool_call_id: call.id, content: result })
       }
