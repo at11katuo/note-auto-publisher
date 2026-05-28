@@ -16,8 +16,8 @@ export function validateArticle(draft: {
     }
   }
 
-  if (draft.charCount < 2000) {
-    violations.push(`文字数が不足しています（${draft.charCount}字、最低2000字必要）`)
+  if (draft.charCount < 800) {
+    violations.push(`文字数が不足しています（${draft.charCount}字、最低800字必要）`)
   } else if (draft.charCount > 3500) {
     violations.push(`文字数が超過しています（${draft.charCount}字、最大3500字）`)
   }
