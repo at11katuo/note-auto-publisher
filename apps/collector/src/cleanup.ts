@@ -1,8 +1,8 @@
 import { prisma } from '@note/db'
 import type { Logger } from '@note/logger'
 
-const TRASH_AFTER_MS = 14 * 24 * 60 * 60 * 1000   // 14日でゴミ箱へ
-const DELETE_AFTER_MS = 14 * 24 * 60 * 60 * 1000  // ゴミ箱から14日で完全削除
+const TRASH_AFTER_MS = 3 * 24 * 60 * 60 * 1000    // 3日でゴミ箱へ
+const DELETE_AFTER_MS = 3 * 24 * 60 * 60 * 1000   // ゴミ箱から3日で完全削除
 
 export async function runCleanup(logger: Logger): Promise<void> {
   const now = new Date()
@@ -31,7 +31,7 @@ export async function runCleanup(logger: Logger): Promise<void> {
   }
 
   // ──────────────────────────────────────────────
-  // 2. ゴミ箱へ: 14日間ためこんだ未使用アイテム
+  // 2. ゴミ箱へ: 3日間ためこんだ未使用アイテム
   // ──────────────────────────────────────────────
   const trashedDrafts = await prisma.draft.updateMany({
     where: {

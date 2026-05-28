@@ -11,7 +11,7 @@ import { createLogger } from '@note/logger'
 
 const log = createLogger('generator:director')
 
-export const HERMES_MODEL = 'meta-llama/llama-3.3-70b-instruct'
+export const HERMES_MODEL = 'openai/gpt-4o-mini'
 
 const MAX_AGENT_ITERATIONS = 8
 const MAX_SEARCH_CALLS = 3
