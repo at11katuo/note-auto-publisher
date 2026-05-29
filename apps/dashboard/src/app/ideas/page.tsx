@@ -1,5 +1,6 @@
 import { prisma } from '@note/db';
 import { formatDateJST } from '@/lib/format-date';
+import { GenerateFromIdeaButton } from '@/components/generate-from-idea-button';
 
 export const revalidate = 0;
 
@@ -58,11 +59,16 @@ export default async function IdeasPage() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="flex-1 text-sm font-medium leading-snug">{idea.title}</p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusColor}`}
-                  >
-                    {STATUS_LABEL[idea.status] ?? idea.status}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor}`}
+                    >
+                      {STATUS_LABEL[idea.status] ?? idea.status}
+                    </span>
+                    {idea.status === 'new' && (
+                      <GenerateFromIdeaButton ideaId={idea.id} />
+                    )}
+                  </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                   <span>{SOURCE_LABEL[idea.source] ?? idea.source}</span>

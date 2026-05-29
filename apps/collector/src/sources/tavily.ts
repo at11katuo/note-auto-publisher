@@ -4,11 +4,13 @@ import type { Logger } from '@note/logger'
 import type { RawIdea } from '../types.js'
 
 const SEARCH_QUERIES = [
-  '日本 NISA オルカン 投資信託 最新ニュース',
-  '仮想通貨 イーサリアム ビットコイン 暗号資産 相場',
-  '米国経済指標 FRB 金利 株式市場 日本への影響',
-  'FIRE 早期退職 資産運用 インデックス投資',
-  'iDeCo 確定拠出年金 節税 資産形成',
+  '日本 NISA つみたて投資枠 オルカン 最新ニュース',
+  'FRB 金利 米国経済 日本株 円相場 最新',
+  '日銀 金融政策 為替介入 日経平均 今週',
+  '仮想通貨 イーサリアム ビットコイン 相場 最新',
+  'iDeCo 確定拠出年金 節税 資産形成 2025',
+  'FIRE サイドFIRE 早期退職 資産運用 成功事例',
+  '世界経済 景気後退 インフレ 投資戦略 日本人',
 ]
 
 export async function collectFromTavily(logger: Logger): Promise<Result<RawIdea[], Error>> {

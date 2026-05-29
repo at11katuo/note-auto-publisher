@@ -14,22 +14,23 @@ export type FeedConfig = {
 }
 
 export const RSS_FEEDS: readonly FeedConfig[] = [
-  // ── テーマ1: インデックス投資・NISA・長期投資 ──────────────────────────
-  { name: 'nikkei-markets',  url: 'https://www.nikkei.com/markets/rss/' },
-  { name: 'rakuten-toushin', url: 'https://media.rakuten-sec.net/feed' },
-  { name: 'minkabu',         url: 'https://minkabu.jp/rss.xml' },
-  { name: 'hatena-money',    url: 'https://b.hatena.ne.jp/hotentry/money.rss' },
+  // ── マーケット・株式・為替 ──────────────────────────────────────────
+  { name: 'nikkei-markets',   url: 'https://www.nikkei.com/markets/rss/' },
+  { name: 'minkabu',          url: 'https://minkabu.jp/rss.xml' },
+  { name: 'kabutan',          url: 'https://kabutan.jp/rss/news/' },
+  { name: 'reuters-jp-money', url: 'https://feeds.reuters.com/reuters/JPmoneyNews' },
 
-  // ── テーマ2: Python・GitHub Actions・業務自動化 ───────────────────────
-  { name: 'zenn-python',         url: 'https://zenn.dev/topics/python/feed' },
-  { name: 'zenn-githubactions',  url: 'https://zenn.dev/topics/githubactions/feed' },
-  { name: 'qiita-python',        url: 'https://qiita.com/tags/python/feed' },
-  { name: 'qiita-githubactions', url: 'https://qiita.com/tags/githubactions/feed' },
-  { name: 'hatena-it',           url: 'https://b.hatena.ne.jp/hotentry/it.rss' },
-  { name: 'itmedia-news',        url: 'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml' },
+  // ── 投資信託・NISA・資産運用 ─────────────────────────────────────────
+  { name: 'rakuten-toushin',  url: 'https://media.rakuten-sec.net/feed' },
+  { name: 'toushi-no-susume', url: 'https://toushi-no-susume.com/feed/' },
+  { name: 'hatena-money',     url: 'https://b.hatena.ne.jp/hotentry/money.rss' },
 
-  // ── テーマ3: 筋トレ・ダイエット・健康管理 ────────────────────────────
-  { name: 'tarzan',        url: 'https://tarzan.jp/feed/' },
-  { name: 'womenshealth',  url: 'https://www.womenshealthmag.com/jp/rss/all/' },
-  { name: 'hatena-life',   url: 'https://b.hatena.ne.jp/hotentry/life.rss' },
+  // ── マクロ経済・金融政策・FRB・日銀 ─────────────────────────────────
+  { name: 'diamond-online',   url: 'https://diamond.jp/feed/category/economy' },
+  { name: 'toyo-keizai',      url: 'https://toyokeizai.net/list/feed/rss' },
+  { name: 'president-online', url: 'https://president.jp/list/economics/rss' },
+
+  // ── 仮想通貨・暗号資産 ───────────────────────────────────────────────
+  { name: 'coindesk-jp',      url: 'https://www.coindeskjapan.com/feed/' },
+  { name: 'coinpost',         url: 'https://coinpost.jp/?feed=rss2' },
 ]
