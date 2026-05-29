@@ -1,59 +1,50 @@
 import { prisma } from '@note/db'
 import type { Logger } from '@note/logger'
 
-const TRASH_AFTER_MS = 3 * 24 * 60 * 60 * 1000    // 3日でゴミ箱へ
-const DELETE_AFTER_MS = 3 * 24 * 60 * 60 * 1000   // ゴミ箱から3日で完全削除
+/** 取り込みから3日経過したデータを削除する */
+const RETAIN_MS = 3 * 24 * 60 * 60 * 1000
 
 export async function runCleanup(logger: Logger): Promise<void> {
-  const now = new Date()
-  const trashThreshold = new Date(now.getTime() - TRASH_AFTER_MS)
-  const deleteThreshold = new Date(now.getTime() - DELETE_AFTER_MS)
+  const threshold = new Date(Date.now() - RETAIN_MS)
 
-  // ──────────────────────────────────────────────
-  // 1. 完全削除: ゴミ箱入りから14日経過したもの
-  // ──────────────────────────────────────────────
+  // ── Ideas: 収集から3日経過した未使用ネタを削除 ───────────────────────────
+  // 'used' は記事生成済みのため除外
+  const deletedIdeas = await prisma.idea.deleteMany({
+    where: {
+      collectedAt: { lte: threshold },
+      status: { not: 'used' },
+    },
+  })
+
+  // ── Drafts: 生成から3日経過した未投稿下書きを削除 ────────────────────────
+  // 'published' は投稿済みのため除外
   const deletedDrafts = await prisma.draft.deleteMany({
     where: {
-      deletedAt: { lte: deleteThreshold },
-      // 投稿済みは削除しない
+      generatedAt: { lte: threshold },
       status: { not: 'published' },
     },
   })
-  const deletedIdeas = await prisma.idea.deleteMany({
-    where: { deletedAt: { lte: deleteThreshold } },
+
+  // ── 手動削除済み(deletedAt あり)のアイテムも即時削除 ──────────────────────
+  const deletedTrashedIdeas = await prisma.idea.deleteMany({
+    where: { deletedAt: { not: null } },
   })
-
-  if (deletedDrafts.count > 0 || deletedIdeas.count > 0) {
-    logger.info(
-      { drafts: deletedDrafts.count, ideas: deletedIdeas.count },
-      'Permanently deleted trashed items',
-    )
-  }
-
-  // ──────────────────────────────────────────────
-  // 2. ゴミ箱へ: 3日間ためこんだ未使用アイテム
-  // ──────────────────────────────────────────────
-  const trashedDrafts = await prisma.draft.updateMany({
+  const deletedTrashedDrafts = await prisma.draft.deleteMany({
     where: {
-      deletedAt: null,
-      status: { in: ['draft', 'rejected'] },
-      generatedAt: { lte: trashThreshold },
+      deletedAt: { not: null },
+      status: { not: 'published' },
     },
-    data: { deletedAt: now },
-  })
-  const trashedIdeas = await prisma.idea.updateMany({
-    where: {
-      deletedAt: null,
-      status: { in: ['new', 'skipped'] },
-      collectedAt: { lte: trashThreshold },
-    },
-    data: { deletedAt: now },
   })
 
-  if (trashedDrafts.count > 0 || trashedIdeas.count > 0) {
+  const totalIdeas = deletedIdeas.count + deletedTrashedIdeas.count
+  const totalDrafts = deletedDrafts.count + deletedTrashedDrafts.count
+
+  if (totalIdeas > 0 || totalDrafts > 0) {
     logger.info(
-      { drafts: trashedDrafts.count, ideas: trashedIdeas.count },
-      'Moved old items to trash',
+      { ideas: totalIdeas, drafts: totalDrafts },
+      'Cleanup: deleted old items (3-day retention)',
     )
+  } else {
+    logger.info('Cleanup: nothing to delete')
   }
 }

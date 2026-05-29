@@ -17,6 +17,13 @@ async function runCycle(): Promise<void> {
   const source = process.argv[2] ?? 'all'
   logger.info({ source }, 'Starting collection cycle')
 
+  // クリーンアップは収集結果に関わらず毎サイクル必ず実行する
+  try {
+    await runCleanup(logger)
+  } catch (e) {
+    logger.error({ error: String(e) }, 'Cleanup error')
+  }
+
   const allIdeas: RawIdea[] = []
 
   if (source === 'all' || source === 'rss') {
@@ -86,13 +93,6 @@ async function runCycle(): Promise<void> {
 
   logger.info({ saved: saveResult.value }, 'Collection cycle complete')
   await notifyDiscord(`✅ ${saveResult.value} 件の新しいネタを収集しました`)
-
-  // クリーンアップ: 古いアイテムをゴミ箱へ移動 / 完全削除
-  try {
-    await runCleanup(logger)
-  } catch (e) {
-    logger.error({ error: String(e) }, 'Cleanup error')
-  }
 }
 
 async function main(): Promise<void> {
