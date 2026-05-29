@@ -42,7 +42,7 @@ vi.mock('@note/logger', () => ({
   })),
 }))
 
-import { generateArticle, extractJson, countChars, addBulletToParagraphs } from '../generate.js'
+import { generateArticle, extractJson, countChars } from '../generate.js'
 
 const mockIdea: Idea = {
   id: 'idea-test-001',
@@ -128,26 +128,6 @@ describe('countChars', () => {
   })
 })
 
-describe('addBulletToParagraphs', () => {
-  it('adds ● to each paragraph', () => {
-    const input = '導入文です。\n\n見出し1の本文です。\n\nまとめです。'
-    const result = addBulletToParagraphs(input)
-    expect(result).toBe('● 導入文です。\n\n● 見出し1の本文です。\n\n● まとめです。')
-  })
-
-  it('does not duplicate ● if already present', () => {
-    const input = '● 既に付いている段落。\n\n新しい段落。'
-    const result = addBulletToParagraphs(input)
-    expect(result).toBe('● 既に付いている段落。\n\n● 新しい段落。')
-  })
-
-  it('preserves empty paragraphs', () => {
-    const input = '段落1。\n\n\n\n段落2。'
-    const result = addBulletToParagraphs(input)
-    expect(result.includes('● 段落1')).toBe(true)
-    expect(result.includes('● 段落2')).toBe(true)
-  })
-})
 
 describe('generateArticle', () => {
   beforeEach(() => {

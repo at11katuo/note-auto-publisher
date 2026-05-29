@@ -38,17 +38,6 @@ export function countChars(text: string): number {
   return text.replace(/[\s\r\n#*`>\-|~_[\]()!]/g, '').length
 }
 
-// 各段落（空行区切り）の先頭に「● 」を付与する。既に付いている場合は重複しない。
-export function addBulletToParagraphs(text: string): string {
-  return text
-    .split(/\n{2,}/)
-    .map((para) => {
-      const trimmed = para.trimStart()
-      if (!trimmed) return para
-      return trimmed.startsWith('●') ? para : `● ${trimmed}`
-    })
-    .join('\n\n')
-}
 
 export async function generateArticle(idea: Idea): Promise<Result<Draft, Error>> {
   const openrouterKey = process.env['OPENROUTER_API_KEY']
@@ -123,7 +112,7 @@ export async function generateArticle(idea: Idea): Promise<Result<Draft, Error>>
     )
   }
 
-  const bodyWithDisclaimer = addBulletToParagraphs(parsed.body) + DISCLAIMER
+  const bodyWithDisclaimer = parsed.body + DISCLAIMER
   const charCount = countChars(bodyWithDisclaimer)
   const validation = validateArticle({ title: parsed.title, body: bodyWithDisclaimer, charCount })
 

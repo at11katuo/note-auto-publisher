@@ -1,0 +1,20 @@
+{
+  "name": "@note/agent",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@note/logger": "workspace:*",
+    "@note/prompts": "workspace:*",
+    "@note/shared": "workspace:*",
+    "neverthrow": "^8.1.1",
+    "openai": "^4.76.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

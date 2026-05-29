@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
+    "@note/agent": "workspace:*",
     "@note/db": "workspace:*",
     "@note/logger": "workspace:*",
     "@note/prompts": "workspace:*",
