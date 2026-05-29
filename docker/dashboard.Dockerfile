@@ -10,6 +10,7 @@ COPY packages/db/package.json       packages/db/
 COPY packages/logger/package.json   packages/logger/
 COPY packages/prompts/package.json  packages/prompts/
 COPY packages/shared/package.json   packages/shared/
+COPY packages/agent/package.json    packages/agent/
 COPY apps/dashboard/package.json    apps/dashboard/
 
 RUN pnpm install --frozen-lockfile

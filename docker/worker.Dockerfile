@@ -22,6 +22,7 @@ COPY packages/db/package.json       packages/db/
 COPY packages/logger/package.json   packages/logger/
 COPY packages/prompts/package.json  packages/prompts/
 COPY packages/shared/package.json   packages/shared/
+COPY packages/agent/package.json    packages/agent/
 COPY apps/collector/package.json    apps/collector/
 COPY apps/generator/package.json    apps/generator/
 COPY apps/publisher/package.json    apps/publisher/
