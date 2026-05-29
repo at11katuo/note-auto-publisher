@@ -234,6 +234,9 @@ importers:
 
   packages/agent:
     dependencies:
+      '@note/db':
+        specifier: workspace:*
+        version: link:../db
       '@note/logger':
         specifier: workspace:*
         version: link:../logger

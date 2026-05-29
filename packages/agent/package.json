@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@note/db": "workspace:*",
     "@note/logger": "workspace:*",
     "@note/prompts": "workspace:*",
     "@note/shared": "workspace:*",
