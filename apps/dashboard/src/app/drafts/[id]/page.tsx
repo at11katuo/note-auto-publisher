@@ -73,7 +73,7 @@ export default async function DraftDetailPage({ params }: Props) {
       {/* メタ情報 */}
       <div className="rounded-lg border border-gray-800 bg-gray-900 p-4 text-xs text-gray-500 space-y-1">
         {draft.idea && <p>ネタ: <span className="text-gray-300">{draft.idea.title}</span></p>}
-        <p>モデル: <span className="text-gray-300">{draft.llmModel}</span> / プロンプト v{draft.promptVersion}</p>
+        <p>モデル: <span className="text-gray-300">{draft.llmModel}</span> / プロンプト {draft.promptVersion}</p>
         <p>生成日: <span className="text-gray-300">{formatDateTimeJST(draft.generatedAt)}</span></p>
         <p>文字数: <span className="text-gray-300">{draft.charCount.toLocaleString()} 字</span></p>
         {draft.rejectReason && (

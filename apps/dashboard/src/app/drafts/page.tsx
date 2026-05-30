@@ -75,7 +75,7 @@ export default async function DraftsPage() {
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                     <span>{draft.charCount.toLocaleString()} 字</span>
                     <span>{draft.llmModel}</span>
-                    <span>v{draft.promptVersion}</span>
+                    <span>{draft.promptVersion}</span>
                     <span>{formatDateJST(draft.generatedAt)}</span>
                   </div>
 
