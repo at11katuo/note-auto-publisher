@@ -68,18 +68,19 @@ jobs:
 
             echo "==> health check — dashboard (retry up to 60s)"
             ATTEMPTS=0
-            until HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-                    --max-time 10 \
-                    -u "${{ secrets.DASHBOARD_BASIC_USER }}:${{ secrets.DASHBOARD_BASIC_PASS }}" \
-                    "http://localhost:3000") \
-                  && [ "$HTTP_STATUS" = "200" ]; do
+            while true; do
+              HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                --max-time 10 \
+                -u "${{ secrets.DASHBOARD_BASIC_USER }}:${{ secrets.DASHBOARD_BASIC_PASS }}" \
+                "http://localhost:3000" 2>/dev/null) || HTTP_STATUS="000"
+              [ "$HTTP_STATUS" = "200" ] && break
               ATTEMPTS=$((ATTEMPTS + 1))
+              echo "  waiting... (attempt $ATTEMPTS, HTTP $HTTP_STATUS)"
               if [ "$ATTEMPTS" -ge 12 ]; then
-                echo "ERROR: dashboard did not return 200 after ${ATTEMPTS} attempts (last: HTTP $HTTP_STATUS)" >&2
+                echo "ERROR: dashboard did not return 200 after $ATTEMPTS attempts (last: HTTP $HTTP_STATUS)" >&2
                 docker compose logs --tail=40 dashboard >&2
                 exit 1
               fi
-              echo "  waiting... (attempt $ATTEMPTS, HTTP $HTTP_STATUS)"
               sleep 5
             done
             echo "==> dashboard OK (HTTP $HTTP_STATUS, attempts: $ATTEMPTS)"
