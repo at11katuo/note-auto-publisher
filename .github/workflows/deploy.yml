@@ -9,9 +9,11 @@ jobs:
   deploy:
     name: SSH Deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+
     steps:
       - name: Deploy via SSH
+        id: deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -27,7 +29,11 @@ jobs:
             git pull origin main
 
             echo "==> write .env from GitHub Secrets"
-            printf 'DATABASE_URL=file:/app/data/prod.db\nNODE_ENV=production\nLOG_LEVEL=info\n' > .env
+            cat > .env <<'ENVEOF'
+            DATABASE_URL=file:/app/data/prod.db
+            NODE_ENV=production
+            LOG_LEVEL=info
+            ENVEOF
             echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
             echo "NOTE_EMAIL=${{ secrets.NOTE_EMAIL }}" >> .env
             echo "NOTE_PASSWORD=${{ secrets.NOTE_PASSWORD }}" >> .env
@@ -39,10 +45,10 @@ jobs:
             echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
             echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
 
-            echo "==> docker compose build"
-            docker compose build
+            echo "==> docker compose build (with layer cache)"
+            DOCKER_BUILDKIT=1 docker compose build
 
-            echo "==> stop and remove existing containers"
+            echo "==> stop existing containers"
             docker compose down
 
             echo "==> remove stale one-off containers"
@@ -54,13 +60,39 @@ jobs:
             echo "==> fix database permissions"
             docker compose run --rm --user root migrate chmod -R 777 /app/data
 
-            echo "==> launch services (including background publisher)"
+            echo "==> launch all services"
             docker compose up -d
 
-            echo "==> wait for stability"
-            sleep 5
+            echo "==> wait for services to stabilise"
+            sleep 8
 
             echo "==> restart caddy"
             docker compose restart caddy
 
+            echo "==> health check — dashboard"
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 15 \
+              -u "${{ secrets.DASHBOARD_BASIC_USER }}:${{ secrets.DASHBOARD_BASIC_PASS }}" \
+              "http://localhost:3000" || echo "000")
+            if [ "$HTTP_STATUS" != "200" ]; then
+              echo "ERROR: dashboard returned HTTP $HTTP_STATUS" >&2
+              docker compose logs --tail=30 dashboard >&2
+              exit 1
+            fi
+            echo "==> dashboard OK (HTTP $HTTP_STATUS)"
+
             echo "==> deploy complete"
+
+      - name: Notify Discord (success)
+        if: success()
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"✅ **Deploy succeeded** — \`$(echo '${{ github.sha }}' | cut -c1-7)\` by ${{ github.actor }}\"}"
+
+      - name: Notify Discord (failure)
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"❌ **Deploy FAILED** — \`$(echo '${{ github.sha }}' | cut -c1-7)\` by ${{ github.actor }} — <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>\"}"
