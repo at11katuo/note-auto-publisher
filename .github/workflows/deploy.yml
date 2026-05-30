@@ -91,14 +91,14 @@ jobs:
             echo "==> deploy complete"
 
       - name: Notify Discord (success)
-        if: success()
+        if: success() && secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
             -d "{\"content\": \"✅ **Deploy succeeded** — \`$(echo '${{ github.sha }}' | cut -c1-7)\` by ${{ github.actor }}\"}"
 
       - name: Notify Discord (failure)
-        if: failure()
+        if: failure() && secrets.DISCORD_WEBHOOK_URL != ''
         run: |
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
