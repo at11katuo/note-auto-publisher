@@ -63,23 +63,26 @@ jobs:
             echo "==> launch all services"
             docker compose up -d
 
-            echo "==> wait for services to stabilise"
-            sleep 8
-
             echo "==> restart caddy"
             docker compose restart caddy
 
-            echo "==> health check — dashboard"
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 15 \
-              -u "${{ secrets.DASHBOARD_BASIC_USER }}:${{ secrets.DASHBOARD_BASIC_PASS }}" \
-              "http://localhost:3000" || echo "000")
-            if [ "$HTTP_STATUS" != "200" ]; then
-              echo "ERROR: dashboard returned HTTP $HTTP_STATUS" >&2
-              docker compose logs --tail=30 dashboard >&2
-              exit 1
-            fi
-            echo "==> dashboard OK (HTTP $HTTP_STATUS)"
+            echo "==> health check — dashboard (retry up to 60s)"
+            ATTEMPTS=0
+            until HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                    --max-time 10 \
+                    -u "${{ secrets.DASHBOARD_BASIC_USER }}:${{ secrets.DASHBOARD_BASIC_PASS }}" \
+                    "http://localhost:3000") \
+                  && [ "$HTTP_STATUS" = "200" ]; do
+              ATTEMPTS=$((ATTEMPTS + 1))
+              if [ "$ATTEMPTS" -ge 12 ]; then
+                echo "ERROR: dashboard did not return 200 after ${ATTEMPTS} attempts (last: HTTP $HTTP_STATUS)" >&2
+                docker compose logs --tail=40 dashboard >&2
+                exit 1
+              fi
+              echo "  waiting... (attempt $ATTEMPTS, HTTP $HTTP_STATUS)"
+              sleep 5
+            done
+            echo "==> dashboard OK (HTTP $HTTP_STATUS, attempts: $ATTEMPTS)"
 
             echo "==> deploy complete"
 
