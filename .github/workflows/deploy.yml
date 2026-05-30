@@ -73,7 +73,7 @@ jobs:
               HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
                 --max-time 10 \
                 -u "${{ secrets.DASHBOARD_BASIC_USER }}:${{ secrets.DASHBOARD_BASIC_PASS }}" \
-                "http://localhost:3000" 2>/dev/null) || HTTP_STATUS="000"
+                "http://localhost" 2>/dev/null) || HTTP_STATUS="000"
               if [ "$HTTP_STATUS" = "200" ]; then
                 echo "==> dashboard OK (HTTP $HTTP_STATUS, attempts: $ATTEMPTS)"
                 break
