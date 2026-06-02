@@ -13,7 +13,14 @@ const TOPIC_PATTERNS: Array<[RegExp, string]> = [
   [/ETF/i, 'etf'],
   [/節税|確定申告|税制|分離課税/i, 'tax'],
   [/副業|サイドビジネス|マイクロ法人/i, 'side-hustle'],
-  [/eMAXIS|インデックス|積立/i, 'index-fund'],
+  [/eMAXIS|インデックス|積立|オルカン|全世界株式/i, 'index-fund'],
+  [/日経平均|日経225|Nikkei/i, 'nikkei'],
+  [/ドル円|USD.*JPY|為替レート|円相場/i, 'forex'],
+  [/S&P500|S&P 500|米国株|ナスダック|NASDAQ/i, 'us-stocks'],
+  [/金価格|ゴールド|Gold|貴金属/i, 'gold'],
+  [/【市場データ】|【市場】/i, 'market-data'],
+  [/FRB|FOMC|金利|利上げ|利下げ/i, 'rates'],
+  [/日銀|BOJ|金融政策|量的緩和/i, 'boj'],
 ]
 
 function inferTopics(text: string): string[] {
